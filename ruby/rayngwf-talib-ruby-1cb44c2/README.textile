@@ -1,0 +1,77 @@
+h2. talib-ruby
+
+Ruby Wrapper for "ta-lib":http://ta-lib.org/
+
+This project has been started by Timur Adigamov on "Rubyforge":http://rubyforge.org/projects/talib-ruby/,
+but since it didn't build on my machine and wasn't complete i modified it slightly, et voila.
+
+h3. Install and build instructions
+
+h4. OSX
+
+Install ta-lib from "MacPorts":http://www.macports.org/ports.php?by=name&substr=ta-lib:
+
+bc. sudo port install ta-lib
+
+Install the ruby wrapper talib_ruby:
+
+bc. sudo env ARCHFLAGS="-arch PLATFORM" gem install talib_ruby -- --with-talib-include=ABSOLUTE_PATH_TO_TALIB_HEADERS  --with-talib-lib=ABSOLUTE_PATH_TO_TALIB_LIBS
+
+* PLATFORM = [i386 | x86_64 | ...]
+* ABSOLUTE_PATH_TO_TALIB_HEADERS = The path to the ta-lib header files (e.g. /opt/local/var/macports/software/ta-lib/0.4.0_0/opt/local/include/ta-lib)
+* ABSOLUTE_PATH_TO_TALIB_LIBS = The path to the ta-lib lib files (e.g. /opt/local/var/macports/software/ta-lib/0.4.0_0/opt/local/lib)
+
+h4. Windows
+
+To install under Windows the ruby development kit is required to build the binary extensions. Download and install instructions can be found at "DevKit Github Page":https://github.com/oneclick/rubyinstaller/wiki/Development-Kit.
+
+Download and extract the ta-lib automake src tarball from "Ta-Lib":http://ta-lib.org/hdr_dw.html (This procedure was tested with ta-lib-0.4.0-src.tar.gz).
+
+From the folder where the ruby devkit was installed double click on msys.bat.
+
+Navigate to the directory where ta-lib source was extracted (on my system it is '/c/users/mlamby/ta-lib-0.4.0-src')and type the following to build the library:
+
+bc. ./configure
+make
+
+Install the ruby wrapper talib_ruby:
+
+bc. gem install talib_ruby -- --with-talib-include=ABSOLUTE_PATH_TO_TALIB_HEADERS  --with-talib-lib=ABSOLUTE_PATH_TO_TALIB_LIBS
+
+* ABSOLUTE_PATH_TO_TALIB_HEADERS = The path to the ta-lib header files (e.g. c:\users\mlamby\downloads\ta-lib-0.4.0-src\include)
+* ABSOLUTE_PATH_TO_TALIB_LIBS = The path to the ta-lib lib files (e.g. c:\users\mlamby\downloads\ta-lib-0.4.0-src\src\.libs)
+
+Now ta-lib can be used by using _require 'talib_ruby'_
+Works on Leopard and Snow Leopard, Windows XP and 7. Has not been tested on Vista.
+
+h3. Example
+
+Calculation of Moving Average (MA):
+
+bc.. require 'rubygems'
+require 'talib_ruby'
+
+# init input data
+a = Array.new
+10.times { |i| a.push i.to_f }
+
+10.times do |k|
+    b = Array.new(10)
+    l = TaLib::Function.new("MA")
+    # setup input parameter
+    l.in_real(0,a)
+    # setup optional parameter
+    l.opt_int(0,k+2)
+    # setup output parameter
+    l.out_real(0,b)
+    lookback = l.lookback
+    l.call(0,9)
+    p "k=#{k+2}"
+    p b
+end
+
+h3. Useful links
+
+* "TA-Lib Forum":http://www.tadoc.org/forum/index.php?board=9.0
+* "XML explanation":http://ta-lib.svn.sourceforge.net/viewvc/ta-lib/trunk/ta-lib/ta_func_api.xml?view=markup of all supported Functions
+* "C/C++ API Documentation":http://ta-lib.org/d_api/d_api.html

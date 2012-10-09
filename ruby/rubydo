@@ -1,0 +1,24 @@
+#! /bin/bash
+
+#while inotifywait $1
+#do
+#	echo "ruby $1"
+#	ruby $1
+#done
+
+PTIME=$(stat $1|grep Modify)
+
+while sleep 1
+do
+	ctime=$(stat $1|grep Modify)
+	if [ "$ctime" != "$PTIME" ]
+	then		
+		clear
+		echo "Start: $(date) --------------"
+		echo
+		ruby $1
+		echo
+		echo "End:   $(date) --------------"
+		PTIME=$ctime
+	fi
+done
