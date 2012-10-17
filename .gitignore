@@ -1,1 +1,3 @@
 *.db
+/java/tos_server
+/java/lib
