@@ -34,7 +34,7 @@ class MarketDataGateway
         $this->_yfh = new YahFin_Historical();
     }
 
-    function get($symbol, $days = 0)
+    function get($symbol, $days, $columns)
     {
         if ($this->_db->shouldUpdate($symbol)) {
             $data = $this->_yfh->get($symbol);
@@ -42,7 +42,7 @@ class MarketDataGateway
             unset($data);
         }
 
-        return $this->_db->select($symbol, $days);
+        return $this->_db->select($symbol, $days, $columns);
     }
 
     function resultAsObjectArray($result)
@@ -270,7 +270,7 @@ class YahFin_Sqlite
      * 
      * @return SQLite3Result 
      */
-    function select($symbol, $days)
+    function select($symbol, $days, $columns)
     {
         $symbol = strtoupper($symbol);
         $limit  = '';
@@ -278,7 +278,7 @@ class YahFin_Sqlite
             $limit = "LIMIT {$days}";
         }
 
-        $query = "SELECT *
+        $query = "SELECT {$columns}
             FROM {$symbol}
             ORDER BY date desc
             {$limit}";
