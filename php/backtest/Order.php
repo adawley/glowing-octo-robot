@@ -85,7 +85,7 @@ class Order
             case OrderStatus::CLOSED:
                 $profit = $this->sale->price - $this->purchase->price;
                 $bto    = "BTO:" . $this->preview($this->purchase) . "\t";
-                return $bto."STC:" . $this->preview($this->sale) . "\t" . $profit;
+                return $bto."STC:" . $this->preview($this->sale) . "\tPNL:" . $profit;
             case OrderStatus::NOT_PLACED:
                 return "Order not placed yet";
             case OrderStatus::ORDERED:
