@@ -10,16 +10,19 @@ $startTime = microtime(true);
 
 include "Strategy.php";
 
-$includeTime = microtime(true) - $startTime;
 
 $symbol = $_GET['s'];
-$func = $_GET['f'];
-$stgy = null;
+$func   = $_GET['f'];
+$stgy   = null;
+$search = false;
 
 if (strcmp($symbol, 'djia') == 0) {
     $symbol = array('AA', 'AXP', 'BA', 'BAC', 'CAT', 'CSCO', 'CVX', 'DD', 'DIS', 'GE', 'HD'
         , 'HPQ', 'IBM', 'INTC', 'JNJ', 'JPM', 'KFT', 'KO', 'MCD', 'MMM', 'MRK', 'MSFT', 'PFE'
         , 'PG', 'T', 'TRV', 'UTX', 'VZ', 'WMT', 'XOM');
+} elseif (strcmp($symbol, 'search') == 0) {
+    $search = true;
+    $symbol = NULL;
 } else {
     $symbol = preg_split('/,/', $symbol);
 }
@@ -40,13 +43,14 @@ endswitch;
 
 $stgy->test();
 $reports = $stgy->report();
-$processTime = microtime(true) - $startTime;
-
 ?>
 <!DOCTYPE html>
 <html>
     <head>
         <style>
+            img#dialog-img{
+                float: left;
+            }
             table{
                 border-collapse: collapse;
             }            
@@ -57,6 +61,14 @@ $processTime = microtime(true) - $startTime;
             }
             table th{
                 background-color: lightgray;
+                cursor: pointer;
+            }
+            table th.blank{
+                border: none;
+                background-color: transparent;
+            }
+            table td.symbol{
+                cursor: pointer;
             }
             table td.total{
                 background-color: #00A6C7;
@@ -67,25 +79,46 @@ $processTime = microtime(true) - $startTime;
             table td.loss{
                 background-color: lightcoral;
             }
+            tbody tr:hover{
+                background-color: lightblue
+            }
         </style>
-
+        <link rel="stylesheet" href="css/jquery-ui-1.9.0.custom.min.css" />
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
         <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.23/jquery-ui.min.js"></script>
         <script src="jquery.tablesorter.min.js"></script>
         <script type="text/javascript">
             $(document).ready(function(){ 
                 $("#dataTable").tablesorter(); 
+                
+                $( "#dialog" ).dialog({
+                    autoOpen: false,
+                    height: 550,
+                    width: 1300,
+                    modal: true
+                });
             });
+            
+            function showDialog(arg){                
+                var addr = "http://chart.finance.yahoo.com/z?t=1y&q=b&l=on&z=l&p=s,v,b&a=r14&lang=en-US&region=US&s="+arg.id;
+                $("#dialog-img").attr("src",addr);
+                $( "#dialog-data" ).html("<pre>"+reportData[arg.id].orderLog+"</pre>");
+                $( "#dialog" ).dialog( "open" );
+            }
+        </script>
+        <script type="text/javascript">
+            var reportData = <?= json_encode($reports) ?>
         </script>
     </head>
     <body>
         <table id="dataTable" class="tablesorter">
             <thead>
                 <tr>
-                    <th > </th>
+                    <th class="blank"></th>
                     <th colspan="4">Total</th>
                     <th colspan="3">Winning</th>
                     <th colspan="3">Losing</th>
+                    <th colspan="4">Stats</th>
                 </tr>
                 <tr>
                     <th class="total">Symbol</th>
@@ -99,34 +132,39 @@ $processTime = microtime(true) - $startTime;
                     <th class="loss">Trades</th>
                     <th class="loss">Net P/L</th>
                     <th class="loss">Avg P/L</th>
-                </tr>
-                <tr>
-
+                    <th>Prob. Win</th>
+                    <th>Expectancy</th>
+                    <th>RSI</th>
+                    <th>Buy?</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($reports as $s => $rept): ?>                    
                     <tr>
-                        <td ><?= $s ?></td>
-                        <td class="total"><?= $rept->netProfit ?> </td>
-                        <td class="total"><?= $rept->returnPercent ?> </td>
-                        <td class="total"><?= $rept->maxDrawdown ?> </td>
+                        <td class="symbol" onclick="showDialog(this);" id="<?= $s ?>"><?= $s ?></td>
+                        <td class="total"><?= $rept->numfmt('netProfit') ?> </td>
+                        <td class="total"><?= $rept->numfmt('returnPercent') ?> </td>
+                        <td class="total"><?= $rept->numfmt('maxDrawdown') ?> </td>
                         <td class="total"><?= $rept->totalTradeCount ?> </td>
                         <td class="win"><?= $rept->winningTradeCount ?> </td>
-                        <td class="win"><?= $rept->winningTradeProfit ?> </td>
-                        <td class="win"><?= $rept->averageWinningTradeProfit ?> </td>
+                        <td class="win"><?= $rept->numfmt('winningTradeProfit') ?> </td>
+                        <td class="win"><?= $rept->numfmt('averageWinningTradeProfit') ?> </td>
                         <td class="loss"><?= $rept->losingTradeCount ?> </td>                        
-                        <td class="loss"><?= $rept->losingTradeLoss ?> </td>                        
-                        <td class="loss"><?= $rept->averageLosingTradeLoss ?> </td>
-                        <td ><?= $rept->dataTime ?> </td>
-                        <td ><?= $rept->configTime ?> </td>
-                        <td ><?= $rept->processTime ?> </td>
-                        <td ><?= $rept->totalTime ?> </td>                      
-                        
+                        <td class="loss"><?= $rept->numfmt('losingTradeLoss') ?> </td>                        
+                        <td class="loss"><?= $rept->numfmt('averageLosingTradeLoss') ?> </td>
+                        <td ><?= $rept->numfmt('winningTradeProbability') ?> </td>
+                        <td ><?= $rept->numfmt('expectancy') ?> </td>
+                        <td ><?= $rept->userData->last ?> </td>
+                        <td ><?= $rept->userData->buyTrigger ?> </td>
+
                     </tr>    
                 <?php endforeach; ?>
             </tbody>
         </table>
-        <?= "Inc: ".$includeTime."<br>ProcessTime: ".$processTime."<br>Total Time: ".(microtime(true) - $startTime) ?>
+        <?= "<br>Calculated in " . (microtime(true) - $startTime) . " seconds." ?>
+        <div id="dialog">
+            <img src="" id="dialog-img"/>
+            <div id="dialog-data"></div>
+        </div>
     </body>
 </html>
