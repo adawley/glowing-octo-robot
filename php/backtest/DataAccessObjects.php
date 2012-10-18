@@ -13,6 +13,305 @@
  */
 
 /**
+ * CSVParserBase
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Michael Crosby <michael@crosbymichael.com>
+ * @license  http://crosbymichael.com CC Attribution-NonCommercial
+ * @link     https://github.com/crosbymichael
+ */
+abstract class CSVParserBase
+{
+
+    protected $MaxLenght        = 0;
+    protected $Separator        = '';
+    public $HeaderArray      = null;
+    public $IsFirstRowHeader = false;
+
+    function __construct($maxLenght = 1000, $separator = ',')
+    {
+        $this->MaxLenght = $maxLenght;
+        $this->Separator = $separator;
+    }
+
+    public function Parse($csvData)
+    {
+        $array = null;
+
+        if (($fh = fopen($csvData, "r"))) {
+
+            while (($data = fgetcsv($fh, $this->MaxLenght, $this->Separator))) {
+                $array[] = $data;
+            }
+
+            fclose($fh);
+        } else {
+            throw new Exception("Cannot parse data", 1);
+        }
+        return $this->ProcessArray($array);
+    }
+
+    protected abstract function ProcessArray($array);
+
+    protected function StripString($contents)
+    {
+        return preg_replace('/\s+/', '', $contents);
+    }
+
+}
+
+/**
+ * CSVParserFactory
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Michael Crosby <michael@crosbymichael.com>
+ * @license  http://crosbymichael.com CC Attribution-NonCommercial
+ * @link     https://github.com/crosbymichael
+ */
+class CSVParserFactory
+{
+
+    public static function Create($type, $maxLenght = 1000, $separator = ',')
+    {
+        switch ($type) {
+            case 'json':
+                return new CSVToJsonParser($maxLenght, $separator);
+            case 'object':
+                return new CSVToObjectParser($maxLenght, $separator);
+            case 'xml':
+                return new CSVToXmlParser($maxLenght, $separator);
+        }
+    }
+
+}
+
+/**
+ * CSVToJsonParser
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Michael Crosby <michael@crosbymichael.com>
+ * @license  http://crosbymichael.com CC Attribution-NonCommercial
+ * @link     https://github.com/crosbymichael
+ */
+class CSVToJsonParser
+    extends CSVParserBase
+{
+
+    protected function ProcessArray($array)
+    {
+
+        if ($this->IsFirstRowHeader) {
+            $this->HeaderArray = $array[0];
+            $array             = $this->ToAssocativeArray($array);
+        }
+
+        return json_encode($array);
+    }
+
+    private function ToAssocativeArray($array)
+    {
+
+        $columnCount = count($array[0]);
+        $temp        = array();
+
+        for ($i = 1; $i < count($array); $i++) {
+            $item = array();
+
+            for ($n = 0; $n < $columnCount; $n++) {
+                $columnName        = $this->HeaderArray[$n];
+                $item[$columnName] = $array[$i][$n];
+            }
+
+            $temp[] = $item;
+            unset($item);
+        }
+        return $temp;
+    }
+
+}
+
+/**
+ * CSVToObjectParser
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
+class CSVToObjectParser
+    extends CSVParserBase
+{
+
+    protected function ProcessArray($array)
+    {
+        if ($this->IsFirstRowHeader) {
+            $this->HeaderArray = array_shift($array);
+            $array             = $this->ToObjectArray($array);
+        }
+
+        return $array;
+    }
+
+    private function ToObjectArray(&$array)
+    {
+        $result = array();
+        $rowCount    = count($array);
+        $columnCount = count($this->HeaderArray);
+        for ($i = 0; $i < $rowCount; $i++) {
+            $clazz = new stdClass();
+            for ($j = 0; $j < $columnCount; $j++) {
+                $clazz->{$this->HeaderArray[$j]} = $array[$i][$j];
+            }
+            $result[]                        = $clazz;
+            unset($clazz);
+        }
+        return $result;
+    }
+
+}
+
+/**
+ * CSVToXmlParser
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Michael Crosby <michael@crosbymichael.com>
+ * @license  http://crosbymichael.com CC Attribution-NonCommercial
+ * @link     https://github.com/crosbymichael
+ */
+class CSVToXmlParser
+    extends CSVParserBase
+{
+
+    public $ItemName = 'item';
+
+    protected function ProcessArray($array)
+    {
+        $startingIndex = 0;
+        $document      = '';
+
+        if ($this->IsFirstRowHeader) {
+            $startingIndex     = 1;
+            $this->HeaderArray = $array[0];
+        }
+
+        $columnCount = count($array[0]);
+
+        $document = "<?xml version=\"1.0\" ?>\n";
+        $document .= "<root>\n";
+
+        for ($i = $startingIndex; $i < count($array); $i++) {
+            $document .= $this->GetItemName();
+
+            for ($n = 0; $n < $columnCount; $n++) {
+                $columnName = $this->GetColumnName($n);
+
+                $document .= sprintf(
+                    "\t\t<%s>%s</%s>\n", $columnName, $array[$i][$n], $columnName);
+            }
+
+            $document .= $this->GetItemName(true);
+        }
+
+        $document .= "</root>";
+
+        return $document;
+    }
+
+    private function GetColumnName($index)
+    {
+        $name = 'column' . $index;
+
+        if ($this->HeaderArray != null &&
+            count($this->HeaderArray) > 0) {
+            $name = $this->StripString(
+                $this->HeaderArray[$index]);
+        }
+        return $name;
+    }
+
+    private function GetItemName($close = false)
+    {
+        $format = ($close) ? "\t</%s>\n" : "\t<%s>\n";
+        return sprintf($format, $this->ItemName);
+    }
+
+}
+
+class Finviz_Field
+{
+
+    const NUMBER        = 'No.';
+    const TICKER        = 'Ticker';
+    const COMPANY       = 'Company';
+    const SECTOR        = 'Sector';
+    const INDUSTRY      = 'Industry';
+    const COUNTRY       = 'Country';
+    const MARKET_CAP    = 'Market Cap';
+    const PE            = 'P/E';
+    const BETA          = 'Beta';
+    const ATR           = 'Average True Range';
+    const SMA20         = '20-Day Simple Moving Average';
+    const SMA50         = '50-Day Simple Moving Average';
+    const SMA200        = '200-Day Simple Moving Average';
+    const RSI14         = 'Relative Strength Index (14)';
+    const AVG_VOLUME    = 'Average Volume';
+    const PRICE         = 'Price';
+    const CHANGE        = 'Change';
+    const VOLUME        = 'Volume';
+    const EARNINGS_DATE = 'Earnings Date';
+
+}
+
+/**
+ * Finviz_Helper
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
+class Finviz_Helper
+{
+
+    /**
+     * Finviz address
+     * @var string
+     */
+    private $address = 'http://finviz.com/export.ashx?v=152&f=$$FILTERS$$&c=0,1,2,3,4,5,6,7,48,49,52,53,54,59,63,65,66,67,68';
+
+    function get($filters, $columns = NULL)
+    {
+        $filters = implode(',', $filters);
+        $address = str_replace('$$FILTERS$$', $filters, $this->address);
+        if (!is_null($columns)) {
+            $address .= ',' . implode(',', $columns); // appends the columns
+        }
+        $csvParser                   = CSVParserFactory::Create("object");
+        $csvParser->IsFirstRowHeader = true;
+        return $csvParser->Parse($address);
+    }
+
+}
+
+/**
  * MarketDataGateway
  *
  * PHP version 5
@@ -156,6 +455,33 @@ final class YahFin_Field
             case YahFin_Field::ADJUSTED_CLOSE:
                 return 'adjclose';
         }
+    }
+
+}
+
+/**
+ * YahFin_Historical
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
+class YahFin_Historical
+{
+
+    function get($symbol)
+    {
+        $day                         = date('j');
+        $mth                         = date('n') - 1;
+        $yer                         = date('Y');
+        $address                     = "http://ichart.finance.yahoo.com/table.csv?s={$symbol}&d={$mth}&e={$day}&f={$yer}&g=d&a=0&b=1&c=2006&ignore=.csv";
+        $csvParser                   = CSVParserFactory::Create("object");
+        $csvParser->IsFirstRowHeader = true;
+        return $csvParser->Parse($address);
     }
 
 }
@@ -325,225 +651,4 @@ class YahFin_Sqlite
 
 }
 
-/**
- * YahFin_Historical
- *
- * PHP version 5
- * 
- * @category PHP
- * @package  
- * @author   Rob Dawley <>
- * @license  http://opensource.org/licenses/MIT MIT
- * @link     http://
- */
-class YahFin_Historical
-{
-
-    function get($symbol)
-    {
-        $day                          = date('j');
-        $mth                          = date('n') - 1;
-        $yer                          = date('Y');
-        $address                      = "http://ichart.finance.yahoo.com/table.csv?s={$symbol}&d={$mth}&e={$day}&f={$yer}&g=d&a=0&b=1&c=2006&ignore=.csv";
-        $jsonParser                   = CSVParserFactory::Create("json");
-        $jsonParser->IsFirstRowHeader = true;
-        return json_decode($jsonParser->Parse($address));
-    }
-
-}
-
-/**
- * CSVParserFactory
- *
- * PHP version 5
- * 
- * @category PHP
- * @package  
- * @author   Michael Crosby <michael@crosbymichael.com>
- * @license  http://crosbymichael.com CC Attribution-NonCommercial
- * @link     https://github.com/crosbymichael
- */
-class CSVParserFactory
-{
-
-    public static function Create($type, $maxLenght = 1000, $separator = ',')
-    {
-        switch ($type) {
-            case 'json':
-                return new CSVToJsonParser($maxLenght, $separator);
-            case 'xml':
-                return new CSVToXmlParser($maxLenght, $separator);
-        }
-    }
-
-}
-
-/**
- * CSVToJsonParser
- *
- * PHP version 5
- * 
- * @category PHP
- * @package  
- * @author   Michael Crosby <michael@crosbymichael.com>
- * @license  http://crosbymichael.com CC Attribution-NonCommercial
- * @link     https://github.com/crosbymichael
- */
-class CSVToJsonParser
-    extends CSVParserBase
-{
-
-    protected function ProcessArray($array)
-    {
-
-        if ($this->IsFirstRowHeader) {
-            $this->HeaderArray = $array[0];
-            $array             = $this->ToAssocativeArray($array);
-        }
-
-        return json_encode($array);
-    }
-
-    private function ToAssocativeArray($array)
-    {
-
-        $columnCount = count($array[0]);
-        $temp        = array();
-
-        for ($i = 1; $i < count($array); $i++) {
-            $item = array();
-
-            for ($n = 0; $n < $columnCount; $n++) {
-                $columnName        = $this->HeaderArray[$n];
-                $item[$columnName] = $array[$i][$n];
-            }
-
-            $temp[] = $item;
-            unset($item);
-        }
-        return $temp;
-    }
-
-}
-
-/**
- * CSVParserBase
- *
- * PHP version 5
- * 
- * @category PHP
- * @package  
- * @author   Michael Crosby <michael@crosbymichael.com>
- * @license  http://crosbymichael.com CC Attribution-NonCommercial
- * @link     https://github.com/crosbymichael
- */
-class CSVToXmlParser
-    extends CSVParserBase
-{
-
-    public $ItemName = 'item';
-
-    protected function ProcessArray($array)
-    {
-        $startingIndex = 0;
-        $document      = '';
-
-        if ($this->IsFirstRowHeader) {
-            $startingIndex     = 1;
-            $this->HeaderArray = $array[0];
-        }
-
-        $columnCount = count($array[0]);
-
-        $document = "<?xml version=\"1.0\" ?>\n";
-        $document .= "<root>\n";
-
-        for ($i = $startingIndex; $i < count($array); $i++) {
-            $document .= $this->GetItemName();
-
-            for ($n = 0; $n < $columnCount; $n++) {
-                $columnName = $this->GetColumnName($n);
-
-                $document .= sprintf(
-                    "\t\t<%s>%s</%s>\n", $columnName, $array[$i][$n], $columnName);
-            }
-
-            $document .= $this->GetItemName(true);
-        }
-
-        $document .= "</root>";
-
-        return $document;
-    }
-
-    private function GetColumnName($index)
-    {
-        $name = 'column' . $index;
-
-        if ($this->HeaderArray != null &&
-            count($this->HeaderArray) > 0) {
-            $name = $this->StripString(
-                $this->HeaderArray[$index]);
-        }
-        return $name;
-    }
-
-    private function GetItemName($close = false)
-    {
-        $format = ($close) ? "\t</%s>\n" : "\t<%s>\n";
-        return sprintf($format, $this->ItemName);
-    }
-
-}
-
-/**
- * CSVParserBase
- *
- * PHP version 5
- * 
- * @category PHP
- * @package  
- * @author   Michael Crosby <michael@crosbymichael.com>
- * @license  http://crosbymichael.com CC Attribution-NonCommercial
- * @link     https://github.com/crosbymichael
- */
-abstract class CSVParserBase
-{
-
-    protected $MaxLenght        = 0;
-    protected $Separator        = '';
-    public $HeaderArray      = null;
-    public $IsFirstRowHeader = false;
-
-    function __construct($maxLenght = 1000, $separator = ',')
-    {
-        $this->MaxLenght = $maxLenght;
-        $this->Separator = $separator;
-    }
-
-    public function Parse($csvData)
-    {
-        $array = null;
-
-        if (($fh = fopen($csvData, "r"))) {
-
-            while (($data = fgetcsv($fh, $this->MaxLenght, $this->Separator))) {
-                $array[] = $data;
-            }
-
-            fclose($fh);
-        } else {
-            throw new Exception("Cannot parse data", 1);
-        }
-        return $this->ProcessArray($array);
-    }
-
-    protected abstract function ProcessArray($array);
-
-    protected function StripString($contents)
-    {
-        return preg_replace('/\s+/', '', $contents);
-    }
-
-}
 ?>
