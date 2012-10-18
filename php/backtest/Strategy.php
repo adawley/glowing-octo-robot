@@ -83,6 +83,11 @@ abstract class Strategy
         return $total;
     }
 
+    /**
+     * Returns a report of the current strategy.
+     * 
+     * @return \StrategyReport
+     */
     public function report()
     {
         $report = new StrategyReport($this->orders);
@@ -95,6 +100,10 @@ abstract class StockStrategy
     extends Strategy
 {
 
+    /**
+     *
+     * @var MarketDataModelImpl 
+     */
     protected $model;
 
     function __construct()
@@ -105,12 +114,12 @@ abstract class StockStrategy
 
     protected function setData($symbol, $columns = '*')
     {
-        parent::__construct();     
+        parent::__construct();
         $cols = '';
-        foreach ($columns as $column){
-            $cols .= YahFin_Field::name($column).',';
+        foreach ($columns as $column) {
+            $cols .= YahFin_Field::name($column) . ',';
         }
-        
+
         $this->model->setData($symbol, 0, trim($cols, ','));
     }
 
@@ -215,6 +224,25 @@ class StrategyReport
     public $orderLog;
 
     /**
+     * The average profit per dollar at risk.
+     * @var float 
+     */
+    public $expectancy;
+
+    /**
+     * User defined data.
+     * @var mixed 
+     */
+    public $userData;
+
+    /**
+     * Likleyhood of a winning trade.
+     * @var float
+     */
+    public $winningTradeProbability;
+
+    /**
+     * StrategyReport constructor.
      * 
      * @param Order $orders
      */
@@ -232,6 +260,8 @@ class StrategyReport
         $this->returnPercent             = 0.0;
         $this->maxDrawdown               = 0.0;
         $this->orderLog                  = '';
+        $this->expectancy                = 0;
+        $this->winningTradeProbability   = 0;
 
         $this->initialize($orders);
     }
@@ -247,8 +277,10 @@ class StrategyReport
         $out .= "Winning: " . $this->winningTradeCount . "\tLosing:  " . $this->losingTradeCount . "\n";
         $out .= "Net P/L: $" . $this->numfmt($this->winningTradeProfit) . "\tNet P/L: $" . $this->numfmt($this->losingTradeLoss) . "\n";
         $out .= "Avg P/L: $" . $this->numfmt($this->averageWinningTradeProfit) . "\tAvg P/L: $" . $this->numfmt($this->averageLosingTradeLoss) . "\n";
+        $out .= "Expectancy: " . $this->numfmt($this->expectancy) . "\n";
+        $out .= "Winning Trade Pro.: " . $this->numfmt($this->winningTradeProbability) . "\n";
 
-        return $out;
+        return $out . print_r($this->userData, true);
     }
 
     /**
@@ -292,7 +324,7 @@ class StrategyReport
                     $this->losingTradeLoss -= $profit;
                 }
 
-                $this->orderLog .= $order . " PNL: {$profit}\n";
+                $this->orderLog .= $order . "\n";
             }
 
             if ($order->isOrdered()) {
@@ -314,10 +346,20 @@ class StrategyReport
         if ($this->losingTradeCount != 0) {
             $this->averageLosingTradeLoss = $this->losingTradeLoss / $this->losingTradeCount;
         }
+
+        // winning trade probability
+        if ($this->totalTradeCount != 0) {
+            $this->winningTradeProbability = $this->winningTradeCount / $this->totalTradeCount;
+        }
+
+        // expectancy
+        $pLoss            = $this->losingTradeCount / $this->totalTradeCount;
+        $this->expectancy = ($this->winningTradeProbability * $this->averageWinningTradeProfit) - ($pLoss * $this->averageLosingTradeLoss);
     }
 
-    public function numfmt($number)
+    public function numfmt($member)
     {
+        $number = $this->{$member};
         if (is_float($number + 1)) {
             return number_format($number, 2);
         } else {
@@ -335,34 +377,77 @@ class ThreeFiveSevenStrategy
         $sma5,
         $sma7;
 
-    function __construct($symbol)
+    /**
+     * Symbols to process.
+     * @var array
+     */
+    private $symbols;
+
+    /**
+     * Results from test.
+     * @var array
+     */
+    private $reports;
+    private $field;
+
+    function __construct($symbols)
     {
-        parent::__construct($symbol);
-        $this->sma3 = $this->model->sma(YahFin_Field::_CLOSE, 3);
-        $this->sma5 = $this->model->sma(YahFin_Field::_CLOSE, 5);
-        $this->sma7 = $this->model->sma(YahFin_Field::_CLOSE, 7);
+        parent::__construct();
+        $this->field = YahFin_Field::_CLOSE;
+        $this->symbols = $symbols;
+    }
+
+    function buyTrigger($key)
+    {
+        $close = $this->model->getField($key, $this->field);
+        return ($close < $this->sma3[$key] // the close is below the sma3
+            && $close < $this->sma5[$key] // and the close is below the sma5
+            && $close < $this->sma7[$key] // and the close is below the sma7
+            );
+    }
+
+    function report()
+    {
+        return $this->reports;
+    }
+    
+    function sellTrigger($key)
+    {
+        $close = $this->model->getField($key, $this->field);
+        return ($close > $this->sma3[$key]   // the close is above the 3sma
+            || $close > $this->sma5[$key] // or the close is above the 5sma
+            || $close > $this->sma7[$key] // or the close is above the 7sma
+            );
     }
 
     function test()
     {
-        $count = $this->model->count();
-        for ($i = 0; $i < $count; $i++) {
-            if (isset($this->sma3[$i]) && isset($this->sma5[$i]) && isset($this->sma7[$i])) {
-                $close = $this->model->getField($i, YahFin_Field::_CLOSE);
-
-                if ($close < $this->sma3[$i] // the close is below the sma3
-                    && $close < $this->sma5[$i] // and the close is below the sma5
-                    && $close < $this->sma7[$i] // and the close is below the sma7
-                    && !$this->inPosition()) { // and we are not in a position
-                    $this->buyOrder($i, YahFin_Field::_CLOSE);
-                } elseif (
-                    ($close > $this->sma3[$i]   // the close is above the 3sma
-                    || $close > $this->sma5[$i] // or the close is above the 5sma
-                    || $close > $this->sma7[$i]) // or the close is above the 7sma
-                    && $this->inPosition()) {// and we are in a position
-                    $this->sellOrder($i, YahFin_Field::_CLOSE);
+        $columns = array(YahFin_Field::DATE, $this->field);
+        foreach ($this->symbols as $symbol) {
+            $this->setData($symbol, $columns);
+            $this->sma3 = $this->model->sma($this->field, 3);
+            $this->sma5 = $this->model->sma($this->field, 5);
+            $this->sma7 = $this->model->sma($this->field, 7);
+            $count      = $this->model->count();
+            for ($i = 0; $i < $count; $i++) {
+                if (isset($this->sma3[$i]) && isset($this->sma5[$i]) && isset($this->sma7[$i])) {
+                    if ($this->buyTrigger($i) && !$this->inPosition()) {
+                        $this->buyOrder($i, $this->field);
+                    } elseif ($this->sellTrigger($i) && $this->inPosition()) {// and we are in a position
+                        $this->sellOrder($i, $this->field);
+                    }
                 }
             }
+            $report = parent::report();
+
+            $last3                      = array_slice($this->sma3, -1);
+            $last5                      = array_slice($this->sma5, -1);
+            $last7                      = array_slice($this->sma7, -1);
+            $report->userData             = new stdClass();
+            $report->userData->last       = $last3[0].','.$last5[0].','.$last7[0];
+            $report->userData->buyTrigger = ($this->buyTrigger($count-1) && $report->expectancy > 0) ? 'Yes' : '-';
+
+            $this->reports[$symbol] = $report;
         }
     }
 
@@ -376,7 +461,7 @@ class BollingerStrategy
 
     function __construct($symbol)
     {
-        parent::__construct($symbol);
+        parent::__construct();
         $this->bbands = $this->model->bbands(YahFin_Field::_CLOSE, 20, 2);
         $this->upper  = &$this->bbands[0];
         $this->mean   = &$this->bbands[1];
@@ -385,18 +470,30 @@ class BollingerStrategy
 
     function test()
     {
-        $count = $this->model->count();
-        for ($i = 0; $i < $count; $i++) {
-            if (isset($this->bbands[0][$i])) {
-                $close = $this->model->getField($i, YahFin_Field::_CLOSE);
-                $date  = $this->model->getField($i, YahFin_Field::DATE);
-                if ($close > $this->upper[$i]) {
-                    echo "Breakout: " . $date . "\n";
-                }
-                if ($close < $this->lower[$i]) {
-                    echo "Breakdown: " . $date . "\n";
+        $columns = array(YahFin_Field::DATE, YahFin_Field::_CLOSE);
+        foreach ($this->symbols as $symbol) {
+            $this->setData($symbol, $columns);
+            $count = $this->model->count();
+            for ($i = 0; $i < $count; $i++) {
+                if (isset($this->bbands[0][$i])) {
+                    $close = $this->model->getField($i, YahFin_Field::_CLOSE);
+                    $date  = $this->model->getField($i, YahFin_Field::DATE);
+                    if ($close > $this->upper[$i]) {
+                        echo "Breakout: " . $date . "\n";
+                    }
+                    if ($close < $this->lower[$i]) {
+                        echo "Breakdown: " . $date . "\n";
+                    }
                 }
             }
+            $report = parent::report();
+
+            $lastRsi                      = array_slice($rsi, -1);
+            $report->userData             = new stdClass();
+            $report->userData->last       = $lastRsi[0];
+            $report->userData->buyTrigger = ($this->buyTrigger($lastRsi[0]) && $report->expectancy > 0) ? 'Yes' : '-';
+
+            $this->reports[$symbol] = $report;
         }
     }
 
@@ -406,46 +503,83 @@ class RsiStrategy
     extends StockStrategy
 {
 
-    private $symbols, $reports;
+    /**
+     * Symbols to process.
+     * @var array
+     */
+    private $symbols;
 
+    /**
+     * Results from test.
+     * @var array
+     */
+    private $reports;
+
+    /**
+     * RsiStrategy constructor
+     * 
+     * @param array $symbols Array of symbols to test, or null to scan for 
+     * symbols to use.
+     */
     function __construct($symbols)
     {
         parent::__construct();
-        $this->symbols = $symbols;
+        if (is_null($symbols)) {
+            $this->symbols = $this->scanner();
+        } else {
+            $this->symbols = $symbols;
+        }
+    }
+
+    function buyTrigger($rsi)
+    {
+        return ($rsi < 30);
+    }
+
+    function scanner()
+    {
+        $finviz  = new Finviz_Helper();
+        $filters = array('idx_sp500', 'ta_rsi_os30');
+        $scan   = $finviz->get($filters);
+        $result = array();
+        foreach ($scan as $row) {
+            $result[] = $row->{Finviz_Field::TICKER};
+        }
+        return $result;
+    }
+
+    function sellTrigger($rsi)
+    {
+        return ($rsi > 50);
     }
 
     function test()
     {
-        $columns = array(YahFin_Field::DATE,  YahFin_Field::_CLOSE);
+        $columns = array(YahFin_Field::DATE, YahFin_Field::_CLOSE);
         foreach ($this->symbols as $symbol) {
-            $startTime = microtime(true);
             $this->setData($symbol, $columns);
-            $dataTime = microtime(true);
-            $rsi = $this->model->rsi(YahFin_Field::_CLOSE, 14);
-            $configTime = microtime(true);
-            $count     = $this->model->count();
+            $rsi   = $this->model->rsi(YahFin_Field::_CLOSE, 14);
+            $count = $this->model->count();
             for ($i = 0; $i < $count; $i++) {
-                if (isset($rsi[$i])) {                    
-                    if ($rsi[$i] < 30 && !$this->inPosition()) {
+                if (isset($rsi[$i])) {
+                    if ($this->buyTrigger($rsi[$i]) && !$this->inPosition()) {
                         $this->buyOrder($i, YahFin_Field::_CLOSE);
-                    } elseif ($rsi[$i] > 50 && $this->inPosition()) {
+                    } elseif ($this->sellTrigger($rsi[$i]) && $this->inPosition()) {
                         $this->sellOrder($i, YahFin_Field::_CLOSE);
                     }
                 }
             }
-            $processTime = microtime(true);
             $report = parent::report();
-            $endTime = microtime(true);
-            $report->dataTime = $dataTime - $startTime;
-            $report->configTime = $configTime - $dataTime;
-            $report->processTime = $processTime - $configTime;
-            $report->totalTime = $endTime - $startTime;
+
+            $lastRsi                      = array_slice($rsi, -1);
+            $report->userData             = new stdClass();
+            $report->userData->last       = $lastRsi[0];
+            $report->userData->buyTrigger = ($this->buyTrigger($lastRsi[0]) && $report->expectancy > 0) ? 'Yes' : '-';
+
             $this->reports[$symbol] = $report;
         }
-        
-        
     }
-    
+
     function report()
     {
         return $this->reports;
