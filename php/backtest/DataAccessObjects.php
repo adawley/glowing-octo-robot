@@ -509,7 +509,7 @@ class YahFin_Sqlite
 
     function __construct()
     {
-        $this->_db = new SQLite3("new.sqlite");
+        $this->_db = new SQLite3("db/new.sqlite");
     }
 
     /**
