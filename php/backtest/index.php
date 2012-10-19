@@ -48,6 +48,9 @@ $reports = $stgy->report();
 <html>
     <head>
         <style>
+            body{
+                font: 9px verdana;
+            }
             img#dialog-img{
                 float: left;
             }
