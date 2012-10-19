@@ -49,7 +49,7 @@ $reports = $stgy->report();
     <head>
         <style>
             body{
-                font: 9px verdana;
+                font: 10px verdana;
             }
             img#dialog-img{
                 float: left;
@@ -70,9 +70,6 @@ $reports = $stgy->report();
                 border: none;
                 background-color: transparent;
             }
-            table td.symbol{
-                cursor: pointer;
-            }
             table td.total{
                 background-color: #00A6C7;
             }
@@ -81,6 +78,9 @@ $reports = $stgy->report();
             }
             table td.loss{
                 background-color: lightcoral;
+            }
+            tbody tr{
+                cursor: pointer;                
             }
             tbody tr:hover{
                 background-color: lightblue
@@ -137,14 +137,14 @@ $reports = $stgy->report();
                     <th class="loss">Avg P/L</th>
                     <th>Prob. Win</th>
                     <th>Expectancy</th>
-                    <th>RSI</th>
+                    <th>Calc</th>
                     <th>Buy?</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($reports as $s => $rept): ?>                    
-                    <tr>
-                        <td class="symbol" onclick="showDialog(this);" id="<?= $s ?>"><?= $s ?></td>
+                    <tr id="<?= $s ?>" onclick="showDialog(this);">
+                        <td class="symbol"  ><?= $s ?></td>
                         <td class="total"><?= $rept->numfmt('netProfit') ?> </td>
                         <td class="total"><?= $rept->numfmt('returnPercent') ?> </td>
                         <td class="total"><?= $rept->numfmt('maxDrawdown') ?> </td>

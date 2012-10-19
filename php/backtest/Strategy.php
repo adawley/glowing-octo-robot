@@ -355,6 +355,8 @@ class StrategyReport
         // expectancy
         $pLoss            = $this->losingTradeCount / $this->totalTradeCount;
         $this->expectancy = ($this->winningTradeProbability * $this->averageWinningTradeProfit) - ($pLoss * $this->averageLosingTradeLoss);
+
+        //TODO: 10 trade rolling expectancy?
     }
 
     public function numfmt($member)
@@ -586,5 +588,23 @@ class RsiStrategy
     }
 
 }
+
+class TMTTStrategy
+    extends StockStrategy
+{
+
+    function buyTrigger($index)
+    {
+        // 3 day pullback
+        // close > yesterdays high
+        // stop below yesterdays low
+    }
+
+    function sellTrigger($index)
+    {
+        // price reaches highest point of 3 day pullback
+    }
+}
+
 ?>
 
