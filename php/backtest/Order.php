@@ -37,15 +37,27 @@ class Order
     function __construct()
     {
         $this->status   = OrderStatus::NOT_PLACED;
-        $this->purchase = new stdClass();
-        $this->sale     = new stdClass();
+        $this->purchase = new OrderSide();
+        $this->sale     = new OrderSide();
     }
 
     function buy($date, $price)
     {
-        $this->purchase->date  = $date;
-        $this->purchase->price = $price;
-        $this->status          = OrderStatus::ORDERED;
+        $this->purchase->date($date);
+        $this->purchase->price($price);
+        $this->status = OrderStatus::ORDERED;
+    }
+
+    function duration()
+    {
+        $result = FALSE;
+
+        if ($this->status == OrderStatus::CLOSED || $this->status == OrderStatus::ORDERED) {
+            $tmp = $this->purchase->date()->diff($this->sale->date());
+            $result = $tmp->days;
+        }
+
+        return $result;
     }
 
     function isClosed()
@@ -58,39 +70,102 @@ class Order
         return ($this->status == OrderStatus::ORDERED);
     }
 
-    private function preview($arg)
-    {
-        return $arg->date . "@" . $arg->price;
-    }
-
     function profit()
     {
         if ($this->status == OrderStatus::CLOSED) {
-            return $this->sale->price - $this->purchase->price;
+            return $this->sale->price() - $this->purchase->price();
         } else {
             return false;
         }
     }
+    
+    /**
+     * 
+     * @return OrderSide
+     */
+    function getPurchase(){
+        return $this->purchase;
+    }
 
+    /**
+     * 
+     * @return OrderSide
+     */
+    function getSale(){
+        return $this->sale;
+    }
+    
     function sell($date, $price)
     {
-        $this->sale->date  = $date;
-        $this->sale->price = $price;
-        $this->status      = OrderStatus::CLOSED;
+        $this->sale->date($date);
+        $this->sale->price($price);
+        $this->status = OrderStatus::CLOSED;
     }
 
     function __toString()
     {
         switch ($this->status):
             case OrderStatus::CLOSED:
-                $profit = $this->sale->price - $this->purchase->price;
-                $bto    = "BTO:" . $this->preview($this->purchase) . "\t";
-                return $bto."STC:" . $this->preview($this->sale) . "\tPNL:" . $profit;
+                $profit = $this->sale->price() - $this->purchase->price();
+                $bto    = "BTO:" . $this->purchase . "\t";
+                return $bto . "STC:" . $this->sale . "\tPNL:" . $profit;
             case OrderStatus::NOT_PLACED:
                 return "Order not placed yet";
             case OrderStatus::ORDERED:
-                return "BTO:" . $this->preview($this->purchase) . "\t";
+                return "BTO:" . $this->purchase . "\t";
         endswitch;
+    }
+
+}
+
+/**
+ * OrderSide
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
+class OrderSide
+{
+
+    private $date;
+    private $price;
+
+    function __construct()
+    {
+        $this->date  = '';
+        $this->price = -1;
+    }
+
+    function date($date = NULL)
+    {
+        if (is_null($date)) {
+            return $this->date;
+        } elseif (is_string($date)) {
+            $this->date = new DateTime($date);
+        } elseif ($date instanceof DateTime) {
+            $this->date = $date;
+        } else {
+            throw new InvalidArgumentException("Must be string or DateTime.");
+        }
+    }
+
+    function price($price = NULL)
+    {
+        if (is_null($price)) {
+            return $this->price;
+        } else {
+            $this->price = $price;
+        }
+    }
+
+    function __toString()
+    {
+        return $this->date->format('Y-m-d') . "@" . $this->price();
     }
 
 }

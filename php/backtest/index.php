@@ -37,6 +37,9 @@ switch ($func):
     case '357':
         $stgy = new ThreeFiveSevenStrategy($symbol);
         break;
+    case 'tmtt':
+        $stgy = new TMTTStrategy($symbol);
+        break;
     default :
         throw new Exception("Strategy not found.");
 endswitch;
@@ -138,7 +141,8 @@ $reports = $stgy->report();
                     <th>Prob. Win</th>
                     <th>Expectancy</th>
                     <th>Calc</th>
-                    <th>Buy?</th>
+                    <th>Avg Days</th>
+                    <th>Buy?</th>                    
                 </tr>
             </thead>
             <tbody>
@@ -158,8 +162,8 @@ $reports = $stgy->report();
                         <td ><?= ($rept->numfmt('winningTradeProbability')*100).'%' ?> </td>
                         <td ><?= $rept->numfmt('expectancy') ?> </td>
                         <td ><?= $rept->userData->last ?> </td>
+                        <td ><?= $rept->numfmt('averageDuration') ?> </td>
                         <td ><?= $rept->userData->buyTrigger ?> </td>
-
                     </tr>    
                 <?php endforeach; ?>
             </tbody>
