@@ -323,6 +323,8 @@ class StrategyReport
                     // net loss of losing trades
                     $this->losingTradeLoss -= $profit;
                 }
+								
+                //TODO: (avg) duration
 
                 $this->orderLog .= $order . "\n";
             }
@@ -604,6 +606,18 @@ class TMTTStrategy
     {
         // price reaches highest point of 3 day pullback
     }
+}
+
+
+class RoboStrategy
+	extends StockStrategy
+{
+	function buyZone(){
+		// rsi buy trigger = true
+	}
+	function buyTrigger(){
+		// TMTT buy trigger = true
+	}
 }
 
 ?>

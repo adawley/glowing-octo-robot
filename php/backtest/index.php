@@ -96,14 +96,14 @@ $reports = $stgy->report();
                 
                 $( "#dialog" ).dialog({
                     autoOpen: false,
-                    height: 550,
-                    width: 1300,
+                    height: 350, //550
+                    width: 960,//1300,
                     modal: true
                 });
             });
             
             function showDialog(arg){                
-                var addr = "http://chart.finance.yahoo.com/z?t=1y&q=b&l=on&z=l&p=s,v,b&a=r14&lang=en-US&region=US&s="+arg.id;
+                var addr = "http://chart.finance.yahoo.com/z?t=1y&q=b&l=on&z=m&p=s,v,b&a=r14&lang=en-US&region=US&s="+arg.id;
                 $("#dialog-img").attr("src",addr);
                 $( "#dialog-data" ).html("<pre>"+reportData[arg.id].orderLog+"</pre>");
                 $( "#dialog" ).dialog( "open" );
@@ -155,7 +155,7 @@ $reports = $stgy->report();
                         <td class="loss"><?= $rept->losingTradeCount ?> </td>                        
                         <td class="loss"><?= $rept->numfmt('losingTradeLoss') ?> </td>                        
                         <td class="loss"><?= $rept->numfmt('averageLosingTradeLoss') ?> </td>
-                        <td ><?= $rept->numfmt('winningTradeProbability') ?> </td>
+                        <td ><?= ($rept->numfmt('winningTradeProbability')*100).'%' ?> </td>
                         <td ><?= $rept->numfmt('expectancy') ?> </td>
                         <td ><?= $rept->userData->last ?> </td>
                         <td ><?= $rept->userData->buyTrigger ?> </td>
