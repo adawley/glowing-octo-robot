@@ -24,7 +24,11 @@ if (strcmp($symbol, 'djia') == 0) {
     $search = true;
     $symbol = NULL;
 } else {
-    $symbol = preg_split('/,/', $symbol);
+    $sym = array();
+    foreach (preg_split('/,/', $symbol) as $s) {
+        $sym[]  = strtoupper($s);
+    }
+    $symbol = $sym;
 }
 
 switch ($func):
@@ -103,6 +107,11 @@ $reports = $stgy->reports();
                     width: 960,//1300,
                     modal: true
                 });
+                
+                setInterval(function(){
+                    $('#loadable').load('test_date.php');
+                }, 5000);
+                
             });
             
             function showDialog(arg){                
@@ -111,6 +120,8 @@ $reports = $stgy->reports();
                 $( "#dialog-data" ).html("<pre>"+reportData[arg.id].orderLog+"</pre>");
                 $( "#dialog" ).dialog( "open" );
             }
+            
+            
         </script>
         <script type="text/javascript">
             var reportData = <?= json_encode($reports) ?>
@@ -172,6 +183,9 @@ $reports = $stgy->reports();
         <div id="dialog">
             <img src="" id="dialog-img"/>
             <div id="dialog-data"></div>
+        </div>
+        <div id="loadable">
+
         </div>
     </body>
 </html>

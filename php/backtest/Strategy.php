@@ -779,12 +779,19 @@ class RsiStrategy
      */
     function addReport($report)
     {
+        // insert into overall reports array
         $symbols                    = $report->getSymbols();
         $this->reports[$symbols[0]] = $report;
-        $rslts                      = new StrategyResultsController();
-        $rslt                       = new StrategyResult('RSI', $symbols[0]);
-        $rslt->uservalue            = json_encode($report);
-        $rslts->insert($rslt);
+
+        // add to the database if it is a good candidate
+        if ($report->expectancy > 0) {
+            $rslts           = new StrategyResultsController();
+            $rslt            = new StrategyResult('RSI', $symbols[0]);
+            $rslt->probability_win = $report->winningTradeProbability;
+            $rslt->expectancy = $report->expectancy;
+            $rslt->uservalue = json_encode($report);
+            $rslts->insert($rslt);
+        }
     }
 
     /**
