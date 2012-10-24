@@ -27,8 +27,21 @@ require_once 'DataAccessObjects.php';
 abstract class MarketDataModel
 {
 
-    protected $dao, $data;
+    /**
+     *
+     * @var MarketDataGateway
+     */
+    protected $dao;
 
+    /**
+     *
+     * @var array 
+     */
+    protected $data;
+
+    /**
+     * MarketDataModel constructor
+     */
     function __construct()
     {
         $this->dao = new MarketDataGateway();
@@ -55,9 +68,16 @@ abstract class MarketDataModel
     {
         return count($this->data);
     }
-    
+
+    /**
+     * Array_walk function to get a specific field from an array of data.
+     * 
+     * @param mixed $item
+     * @param mixed $key
+     * @param YahFin_Field $field
+     */
     function filterField(&$item, $key, $field)
-    {        
+    {
         $item = $item->{$field};
     }
 
@@ -84,9 +104,9 @@ abstract class MarketDataModel
     function getField($key, $field)
     {
         $name = YahFin_Field::name($field);
-        return $this->data[$key]->{$name};        
+        return $this->data[$key]->{$name};
     }
-    
+
     /**
      * 
      * @param int $index Data index
@@ -97,21 +117,21 @@ abstract class MarketDataModel
     {
         $offset = 0;
         $length = 0;
-        
-        if($index >= $days){        
-            $offset = ($index-$days) + 1;
+
+        if ($index >= $days) {
+            $offset = ($index - $days) + 1;
             $length = $days;
-        }else{
+        } else {
             $offset = 0;
             $length = $index;
         }
-        
+
         $data = array_slice($this->data, $offset, $length, true);
-        
-        if(is_null($field)){
+
+        if (is_null($field)) {
             return $data;
-        }else {
-            array_walk($data, array($this,'filterField'), YahFin_Field::name($field));
+        } else {
+            array_walk($data, array($this, 'filterField'), YahFin_Field::name($field));
             return $data;
         }
     }
@@ -134,38 +154,55 @@ abstract class MarketDataModel
      */
     public function getPrices($field, $offset = 0, $length = NULL)
     {
-        $data =  array_slice($this->data, $offset, $length, true);
-        array_walk($data, array($this,'filterField'), YahFin_Field::name($field));        
+        $data = array_slice($this->data, $offset, $length, true);
+        array_walk($data, array($this, 'filterField'), YahFin_Field::name($field));
         return $data;
-        
     }
 
+    /**
+     * Get the highest data point in the range specified.
+     * 
+     * @param int $index Starting index.
+     * @param int $days Number of days to look back.
+     * @param YahFin_Field $field Field to use.
+     * 
+     * @return float
+     */
     public function highest($index, $days, $field = YahFin_Field::HIGH)
     {
-        $data = $this->getBackPeriod($index, $days, $field);
+        $data  = $this->getBackPeriod($index, $days, $field);
         $count = count($data);
-                
-        if($count > 1){
+
+        if ($count > 1) {
             $result = trader_max($data, $count);
             return array_pop($result);
-        }else{
+        } else {
             return array_pop($data);
         }
     }
-    
+
+    /**
+     * Get the lowest data point in the range specified.
+     * 
+     * @param int $index Starting index.
+     * @param int $days Number of days to look back.
+     * @param YahFin_Field $field Field to use.
+     * 
+     * @return float
+     */
     public function lowest($index, $days, $field = YahFin_Field::LOW)
     {
-        $data = $this->getBackPeriod($index, $days, $field);
+        $data  = $this->getBackPeriod($index, $days, $field);
         $count = count($data);
-                
-        if($count > 1){
+
+        if ($count > 1) {
             $result = trader_min($data, $count);
             return array_pop($result);
-        }else{
+        } else {
             return array_pop($data);
         }
     }
-        
+
     /**
      * Relative Strength Index
      * 
@@ -184,10 +221,10 @@ abstract class MarketDataModel
      * 
      * @param string $symbol Symbol to use.
      * @param int $days Number of days back.
-     * @param string $columns Comma seperated list of columns to use.
+     * @param string $columns An array of columns to use.
      */
-    public function setData($symbol, $days, $columns = '*')
-    {        
+    public function setData($symbol, $days, $columns = array('*'))
+    {
         $result     = $this->dao->get($symbol, $days, $columns);
         $this->data = array_reverse($this->dao->resultAsObjectArray($result));
     }
@@ -207,10 +244,26 @@ abstract class MarketDataModel
 
 }
 
+/**
+ * MarketDataModelImpl
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
 class MarketDataModelImpl
     extends MarketDataModel
 {
 
+    /**
+     * MarketDataModelImpl constructor
+     * 
+     * @param string $symbol [Optional]
+     */
     function __construct($symbol = null)
     {
         parent::__construct();

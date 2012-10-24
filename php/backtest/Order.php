@@ -26,13 +26,26 @@
 class Order
 {
 
-    protected
-        $status,
-        $purchase,
-        $sale;
+    /**
+     *
+     * @var OrderStatus 
+     */
+    protected $status;
 
     /**
-     * 
+     *
+     * @var OrderSide 
+     */
+    protected $purchase;
+
+    /**
+     *
+     * @var OrderSide
+     */
+    protected $sale;
+
+    /**
+     * Order constructor
      */
     function __construct()
     {
@@ -41,6 +54,12 @@ class Order
         $this->sale     = new OrderSide();
     }
 
+    /**
+     * Place a buy order.
+     * 
+     * @param string $date
+     * @param float $price
+     */
     function buy($date, $price)
     {
         $this->purchase->date($date);
@@ -48,28 +67,48 @@ class Order
         $this->status = OrderStatus::ORDERED;
     }
 
+    /**
+     * Get the duration of this order.
+     * 
+     * @return float
+     */
     function duration()
     {
         $result = FALSE;
 
         if ($this->status == OrderStatus::CLOSED || $this->status == OrderStatus::ORDERED) {
-            $tmp = $this->purchase->date()->diff($this->sale->date());
+            $tmp    = $this->purchase->date()->diff($this->sale->date());
             $result = $tmp->days;
         }
 
         return $result;
     }
 
+    /**
+     * Is this order closed?
+     * 
+     * @return bool
+     */
     function isClosed()
     {
         return ($this->status == OrderStatus::CLOSED);
     }
 
+    /**
+     * Is this order ordered?
+     * 
+     * @return bool
+     */
     function isOrdered()
     {
         return ($this->status == OrderStatus::ORDERED);
     }
 
+    /**
+     * The profit of this order.
+     * 
+     * @return float 
+     */
     function profit()
     {
         if ($this->status == OrderStatus::CLOSED) {
@@ -78,23 +117,33 @@ class Order
             return false;
         }
     }
-    
+
     /**
+     * Get the purchase of this order.
      * 
      * @return OrderSide
      */
-    function getPurchase(){
+    function getPurchase()
+    {
         return $this->purchase;
     }
 
     /**
+     * Get the sale of this order.
      * 
      * @return OrderSide
      */
-    function getSale(){
+    function getSale()
+    {
         return $this->sale;
     }
-    
+
+    /**
+     * Place a sell order.
+     * 
+     * @param string $date
+     * @param float $price
+     */
     function sell($date, $price)
     {
         $this->sale->date($date);
@@ -102,6 +151,10 @@ class Order
         $this->status = OrderStatus::CLOSED;
     }
 
+    /**
+     * 
+     * @return string
+     */
     function __toString()
     {
         switch ($this->status):
@@ -132,15 +185,36 @@ class Order
 class OrderSide
 {
 
+    /**
+     *
+     * @var DateTime
+     */
     private $date;
+
+    /**
+     *
+     * @var float
+     */
     private $price;
 
+    /**
+     * OrderSide constructor.
+     */
     function __construct()
     {
         $this->date  = '';
         $this->price = -1;
     }
 
+    /**
+     * Get or set the date.
+     * 
+     * @param DateTime $date
+     * 
+     * @return DateTime If no argument is given, the current date is given.
+     * 
+     * @throws InvalidArgumentException
+     */
     function date($date = NULL)
     {
         if (is_null($date)) {
@@ -154,6 +228,13 @@ class OrderSide
         }
     }
 
+    /**
+     * Get or set the price.
+     * 
+     * @param float $price
+     * 
+     * @return float
+     */
     function price($price = NULL)
     {
         if (is_null($price)) {
@@ -163,6 +244,10 @@ class OrderSide
         }
     }
 
+    /**
+     * 
+     * @return string
+     */
     function __toString()
     {
         return $this->date->format('Y-m-d') . "@" . $this->price();
@@ -183,11 +268,28 @@ class OrderSide
  */
 final class OrderStatus
 {
-
+    /**
+     * The order is not placed
+     */
     const NOT_PLACED = 0;
-    const ORDERED    = 1;
-    const CLOSED     = 2;
 
+    /**
+     * The order is ordered.
+     */
+    const ORDERED = 1;
+
+    /**
+     * The order is closed.
+     */
+    const CLOSED = 2;
+
+    /**
+     * Get the name association of the given order status
+     * 
+     * @param OrderStatus $OrderStatus
+     * 
+     * @return string
+     */
     public static function name($OrderStatus)
     {
         switch ($OrderStatus):

@@ -46,6 +46,9 @@ abstract class Strategy
      */
     private $orderCount;
 
+    /**
+     * Strategy constructor
+     */
     function __construct()
     {
         $this->orders = array(new Order());
@@ -53,6 +56,13 @@ abstract class Strategy
         $this->orderCount   = 0;
     }
 
+    /**
+     * Add an order.
+     * 
+     * @param Order $order The order to add.
+     * 
+     * @return int
+     */
     protected function addOrder(&$order)
     {
         $this->orders[$this->orderCount] = $order;
@@ -72,6 +82,11 @@ abstract class Strategy
         return $this->orders[$this->currentOrder];
     }
 
+    /**
+     * Get the total profit from the closed orders.
+     * 
+     * @return float
+     */
     protected function totalProfit()
     {
         $total = 0;
@@ -86,16 +101,29 @@ abstract class Strategy
     /**
      * Returns a report of the current strategy.
      * 
-     * @return \StrategyReport
+     * @param array $symbols Array of symbols.
+     * 
+     * @return StrategyReport
      */
-    public function report()
+    public function report($symbols)
     {
-        $report = new StrategyReport($this->orders);
+        $report = new StrategyReport($this->orders, $symbols);
         return $report;
     }
 
 }
 
+/**
+ * StockStrategy
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
 abstract class StockStrategy
     extends Strategy
 {
@@ -106,6 +134,9 @@ abstract class StockStrategy
      */
     protected $model;
 
+    /**
+     * StockStrategy constructor
+     */
     function __construct()
     {
         parent::__construct();
@@ -118,17 +149,19 @@ abstract class StockStrategy
      * @param string $symbol Symbol to use.
      * @param array $columns Columns to use.
      */
-    protected function setData($symbol, $columns = array('*'))
+    protected function setData($symbol, $columns)
     {
         parent::__construct();
-        $cols = '';
-        foreach ($columns as $column) {
-            $cols .= YahFin_Field::name($column) . ',';
-        }
 
-        $this->model->setData($symbol, 0, trim($cols, ','));
+        $this->model->setData($symbol, 0, $columns);
     }
 
+    /**
+     * Add a buy order.
+     * 
+     * @param int $index
+     * @param float $price
+     */
     protected function buyOrder($index, $price)
     {
         $day   = $this->model->getDay($index);
@@ -137,6 +170,12 @@ abstract class StockStrategy
         $this->addOrder($order);
     }
 
+    /**
+     * Add a sell order.
+     * 
+     * @param int $index
+     * @param float $price
+     */
     protected function sellOrder($index, $price)
     {
         $day   = $this->model->getDay($index);
@@ -144,6 +183,11 @@ abstract class StockStrategy
         $order->sell($day->date, $price);
     }
 
+    /**
+     * Is the current order active.
+     * 
+     * @return bool
+     */
     protected function inPosition()
     {
         $order = $this->currentOrder();
@@ -152,6 +196,17 @@ abstract class StockStrategy
 
 }
 
+/**
+ * StrategyReport
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
 class StrategyReport
 {
 
@@ -252,11 +307,17 @@ class StrategyReport
     public $averageDuration;
 
     /**
+     * Symbols used in report.
+     * @var array
+     */
+    private $symbols;
+
+    /**
      * StrategyReport constructor.
      * 
      * @param Order $orders
      */
-    function __construct(&$orders)
+    function __construct(&$orders, $symbols)
     {
         $this->netProfit                 = 0.0;
         $this->winningTradeProfit        = 0.0;
@@ -273,10 +334,15 @@ class StrategyReport
         $this->expectancy                = 0;
         $this->winningTradeProbability   = 0;
         $this->averageDuration           = 0;
+        $this->symbols                   = $symbols;
 
         $this->initialize($orders);
     }
 
+    /**
+     * 
+     * @return string
+     */
     function __toString()
     {
         $out = '';
@@ -296,6 +362,17 @@ class StrategyReport
     }
 
     /**
+     * Get the symbols used in this report.
+     * 
+     * @return array
+     */
+    public function getSymbols()
+    {
+        return $this->symbols;
+    }
+
+    /**
+     * Initialize all of the orders.
      * 
      * @param Order $orders
      */
@@ -380,6 +457,13 @@ class StrategyReport
         //TODO: 10 trade rolling expectancy?
     }
 
+    /**
+     * Number format helper to reduce decimal places.
+     * 
+     * @param string $member The class member to format.
+     * 
+     * @return string
+     */
     public function numfmt($member)
     {
         $number = $this->{$member};
@@ -392,6 +476,17 @@ class StrategyReport
 
 }
 
+/**
+ * ThreeFiveSevenStrategy
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
 class ThreeFiveSevenStrategy
     extends StockStrategy
 {
@@ -432,6 +527,11 @@ class ThreeFiveSevenStrategy
      */
     private $field;
 
+    /**
+     * ThreeFiveSevenStrategy constructor
+     * 
+     * @param array $symbols
+     */
     function __construct($symbols)
     {
         parent::__construct();
@@ -439,35 +539,57 @@ class ThreeFiveSevenStrategy
         $this->symbols = $symbols;
     }
 
-    function buyTrigger($key)
+    /**
+     * Check if the current index is a buy.
+     * 
+     * @param int $index
+     * 
+     * @return mixed False if not a buy, or price to buy it at.
+     */
+    function buyTrigger($index)
     {
-        $close = $this->model->getField($key, $this->field);
-        if ($close < $this->sma3[$key] // the close is below the sma3
-            && $close < $this->sma5[$key] // and the close is below the sma5
-            && $close < $this->sma7[$key] // and the close is below the sma7
+        $close = $this->model->getField($index, $this->field);
+        if ($close < $this->sma3[$index] // the close is below the sma3
+            && $close < $this->sma5[$index] // and the close is below the sma5
+            && $close < $this->sma7[$index] // and the close is below the sma7
         ) {
             return $close;
         }
         return false;
     }
 
-    function report()
+    /**
+     * Get the reports array.
+     * 
+     * @return array
+     */
+    function reports()
     {
         return $this->reports;
     }
 
-    function sellTrigger($key)
+    /**
+     * Check if the current index is a sell.
+     * 
+     * @param int $index
+     * 
+     * @return boolean False if not a sell, or price to sell it at.
+     */
+    function sellTrigger($index)
     {
-        $close = $this->model->getField($key, $this->field);
-        if ($close > $this->sma3[$key]   // the close is above the 3sma
-            || $close > $this->sma5[$key] // or the close is above the 5sma
-            || $close > $this->sma7[$key] // or the close is above the 7sma
+        $close = $this->model->getField($index, $this->field);
+        if ($close > $this->sma3[$index]   // the close is above the 3sma
+            || $close > $this->sma5[$index] // or the close is above the 5sma
+            || $close > $this->sma7[$index] // or the close is above the 7sma
         ) {
             return $close;
         }
         return false;
     }
 
+    /**
+     * Test the strategy and generate reports.
+     */
     function test()
     {
         $columns = array(YahFin_Field::DATE, $this->field);
@@ -492,7 +614,7 @@ class ThreeFiveSevenStrategy
                     }
                 }
             }
-            $report = parent::report();
+            $report = parent::report(array($symbol));
 
             $last3                        = array_slice($this->sma3, -1);
             $last5                        = array_slice($this->sma5, -1);
@@ -507,21 +629,69 @@ class ThreeFiveSevenStrategy
 
 }
 
+/**
+ * BollingerStrategy
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
 class BollingerStrategy
     extends StockStrategy
 {
 
-    private $bbands, $upper, $mean, $lower;
+    /**
+     * All bands
+     * @var array
+     */
+    private $bbands;
 
-    function __construct($symbol)
+    /**
+     * The upper band.
+     * @var array
+     */
+    private $upper;
+
+    /**
+     * The mean band.
+     * @var array
+     */
+    private $mean;
+
+    /**
+     * The lower band.
+     * @var array
+     */
+    private $lower;
+
+    /**
+     * Symbols
+     * @var array
+     */
+    private $symbols;
+
+    /**
+     * BollingerStrategy constructor.
+     * 
+     * @param array $symbols symbols to use.
+     */
+    function __construct($symbols)
     {
         parent::__construct();
-        $this->bbands = $this->model->bbands(YahFin_Field::_CLOSE, 20, 2);
-        $this->upper  = &$this->bbands[0];
-        $this->mean   = &$this->bbands[1];
-        $this->lower  = &$this->bbands[2];
+        $this->symbols = $symbols;
+        $this->bbands  = $this->model->bbands(YahFin_Field::_CLOSE, 20, 2);
+        $this->upper   = &$this->bbands[0];
+        $this->mean    = &$this->bbands[1];
+        $this->lower   = &$this->bbands[2];
     }
 
+    /**
+     * Test the strategy and generate reports.
+     */
     function test()
     {
         $columns = array(YahFin_Field::DATE, YahFin_Field::_CLOSE);
@@ -540,7 +710,7 @@ class BollingerStrategy
                     }
                 }
             }
-            $report = parent::report();
+            $report = parent::report(array($symbol));
 
             $lastRsi                      = array_slice($rsi, -1);
             $report->userData             = new stdClass();
@@ -553,6 +723,17 @@ class BollingerStrategy
 
 }
 
+/**
+ * RsiStrategy
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
 class RsiStrategy
     extends StockStrategy
 {
@@ -591,6 +772,28 @@ class RsiStrategy
         }
     }
 
+    /**
+     * Add a report to the reports array and update the strategy results table.
+     * 
+     * @param StrategyReport $report
+     */
+    function addReport($report)
+    {
+        $symbols                    = $report->getSymbols();
+        $this->reports[$symbols[0]] = $report;
+        $rslts                      = new StrategyResultsController();
+        $rslt                       = new StrategyResult('RSI', $symbols[0]);
+        $rslt->uservalue            = json_encode($report);
+        $rslts->insert($rslt);
+    }
+
+    /**
+     * Check if the current index is a buy.
+     * 
+     * @param int $index
+     * 
+     * @return mixed False if not a buy. Buy price if true.
+     */
     function buyTrigger($index)
     {
         if ($this->rsi[$index] < 30) {
@@ -600,6 +803,21 @@ class RsiStrategy
         return false;
     }
 
+    /**
+     * Get the reports array.
+     * 
+     * @return array
+     */
+    function reports()
+    {
+        return $this->reports;
+    }
+
+    /**
+     * Search for symbols (candidates)
+     * 
+     * @return array
+     */
     function scanner()
     {
         $finviz  = new Finviz_Helper();
@@ -612,6 +830,13 @@ class RsiStrategy
         return $result;
     }
 
+    /**
+     * Check if the current index is a sell.
+     * 
+     * @param int $index
+     * 
+     * @return mixed False if not a sell.  Sell price if true.
+     */
     function sellTrigger($index)
     {
         if ($this->rsi[$index] > 50) {
@@ -621,6 +846,9 @@ class RsiStrategy
         return false;
     }
 
+    /**
+     * Test the strategy and generate reports.
+     */
     function test()
     {
         $columns = array(YahFin_Field::DATE, YahFin_Field::_CLOSE);
@@ -643,31 +871,46 @@ class RsiStrategy
                     }
                 }
             }
-            $report = parent::report();
+            $report = parent::report(array($symbol));
 
             $lastRsi                      = array_pop($keys);
             $report->userData             = new stdClass();
             $report->userData->last       = $this->rsi[$lastRsi];
-            $report->userData->buyTrigger = 
-                ($this->buyTrigger($lastRsi) !== false 
+            $report->userData->buyTrigger =
+                ($this->buyTrigger($lastRsi) !== false
                 && $report->expectancy > 0) ? 'Yes' : '-';
 
-            $this->reports[$symbol] = $report;
+            $this->addReport($report);
         }
-    }
-
-    function report()
-    {
-        return $this->reports;
     }
 
 }
 
+/**
+ * TMTTStrategy
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
 class TMTTStrategy
     extends StockStrategy
 {
 
+    /**
+     *
+     * @var float
+     */
     private $stopLoss;
+
+    /**
+     *
+     * @var float
+     */
     private $sellAt;
 
     /**
@@ -692,12 +935,25 @@ class TMTTStrategy
         $this->symbols = $symbols;
     }
 
+    /**
+     * Place a sell bracket then the buy order.
+     * 
+     * @param int $index
+     * @param float $price
+     */
     function buyOrder($index, $price)
     {
         $this->setSellBracket($index);
         parent::buyOrder($index, $price);
     }
 
+    /**
+     * Check if the current index is a buy.
+     * 
+     * @param int $index
+     * 
+     * @return mixed False if not a buy. Buy price if true.
+     */
     function buyTrigger($index)
     {
         // (3 day) pullback
@@ -717,6 +973,21 @@ class TMTTStrategy
         return false;
     }
 
+    /**
+     * Get the reports array.
+     * 
+     * @return array
+     */
+    function reports()
+    {
+        return $this->reports;
+    }
+
+    /**
+     * Set the sell bracket order for when there is a buy trigger.
+     * 
+     * @param int $index
+     */
     function setSellBracket($index)
     {
         // highest high in the last 10 days
@@ -726,6 +997,13 @@ class TMTTStrategy
         $this->stopLoss = $this->model->lowest($index, 3);
     }
 
+    /**
+     * Check if the current index is a sell.
+     * 
+     * @param int $index
+     * 
+     * @return mixed False if not a sell.  Sell price if true.
+     */
     function sellTrigger($index)
     {
         $day = $this->model->getDay($index);
@@ -737,6 +1015,9 @@ class TMTTStrategy
         return false;
     }
 
+    /**
+     * Test the strategy and generate reports.
+     */
     function test()
     {
         $columns = array(YahFin_Field::DATE, YahFin_Field::_CLOSE, YahFin_Field::HIGH, YahFin_Field::LOW);
@@ -769,13 +1050,19 @@ class TMTTStrategy
         }
     }
 
-    function report()
-    {
-        return $this->reports;
-    }
-
 }
 
+/**
+ * RoboStrategy
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
 class RoboStrategy
     extends StockStrategy
 {

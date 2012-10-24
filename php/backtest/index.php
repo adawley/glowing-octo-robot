@@ -45,7 +45,7 @@ switch ($func):
 endswitch;
 
 $stgy->test();
-$reports = $stgy->report();
+$reports = $stgy->reports();
 ?>
 <!DOCTYPE html>
 <html>
@@ -159,7 +159,7 @@ $reports = $stgy->report();
                         <td class="loss"><?= $rept->losingTradeCount ?> </td>                        
                         <td class="loss"><?= $rept->numfmt('losingTradeLoss') ?> </td>                        
                         <td class="loss"><?= $rept->numfmt('averageLosingTradeLoss') ?> </td>
-                        <td ><?= ($rept->numfmt('winningTradeProbability')*100).'%' ?> </td>
+                        <td ><?= ($rept->numfmt('winningTradeProbability') * 100) . '%' ?> </td>
                         <td ><?= $rept->numfmt('expectancy') ?> </td>
                         <td ><?= $rept->userData->last ?> </td>
                         <td ><?= $rept->numfmt('averageDuration') ?> </td>

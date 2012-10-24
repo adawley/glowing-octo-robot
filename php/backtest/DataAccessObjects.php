@@ -252,6 +252,17 @@ class CSVToXmlParser
 
 }
 
+/**
+ * Finviz_Field
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
 class Finviz_Field
 {
 
@@ -297,6 +308,14 @@ class Finviz_Helper
      */
     private $address = 'http://finviz.com/export.ashx?v=152&f=$$FILTERS$$&c=0,1,2,3,4,5,6,7,48,49,52,53,54,59,63,65,66,67,68';
 
+    /**
+     * Get the parsed finviz data.
+     * 
+     * @param array $filters Finviz search filters to use (i.e. idx_sp500)
+     * @param array $columns Finviz columns to get (Finviz_Field)
+     * 
+     * @return array
+     */
     function get($filters, $columns = NULL)
     {
         $filters = implode(',', $filters);
@@ -325,14 +344,37 @@ class Finviz_Helper
 class MarketDataGateway
 {
 
-    private $_db, $_yfh;
+    /**
+     *
+     * @var YahFin_Sqlite 
+     */
+    private $_db;
 
+    /**
+     *
+     * @var YahFin_Historical 
+     */
+    private $_yfh;
+
+    /**
+     * MarketDataGateway constructor
+     */
     function __construct()
     {
         $this->_db  = new YahFin_Sqlite();
         $this->_yfh = new YahFin_Historical();
     }
 
+    /**
+     * Get historical data.  First checks database to see if data is current. If
+     * it is not then it goes out an fetches new data, and inserts it into the 
+     * database.  If the data is recent it returns the database data.
+     * 
+     * @param string $symbol
+     * @param int $days
+     * @param array $columns An array of columns to grab.
+     * @return type
+     */
     function get($symbol, $days, $columns)
     {
         if ($this->_db->shouldUpdate($symbol)) {
@@ -344,6 +386,13 @@ class MarketDataGateway
         return $this->_db->select($symbol, $days, $columns);
     }
 
+    /**
+     * Return the result set as an object array.
+     * 
+     * @param SQLite3Result $result
+     * 
+     * @return array
+     */
     function resultAsObjectArray($result)
     {
         $rtn = array();
@@ -414,66 +463,177 @@ class Sqlite_Helper
 
 }
 
-class StrategySearchResults
+/**
+ * StrategyResult
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
+class StrategyResult
 {
-    function __construct() {
+
+    /**
+     *
+     * @var string 
+     */
+    private $strategy;
+
+    /**
+     *
+     * @var string 
+     */
+    private $date;
+
+    /**
+     *
+     * @var string
+     */
+    private $symbol;
+
+    /**
+     *
+     * @var float
+     */
+    public $probability_win;
+
+    /**
+     *
+     * @var float
+     */
+    public $expectancy;
+
+    /**
+     *
+     * @var mixed
+     */
+    public $uservalue;
+
+    /**
+     * StrategyResult constructor
+     * 
+     * @param string $strategy
+     * @param string $symbol
+     */
+    function __construct($strategy, $symbol)
+    {
+        $this->strategy        = $strategy;
+        $this->date            = strftime('%Y-%m-%d');
+        $this->symbol          = $symbol;
+        $this->probability_win = 0;
+        $this->expectancy      = 0;
+        $this->uservalue       = '';
+    }
+
+    /**
+     * The insert query for the StrategyResults table.
+     * 
+     * @return string
+     */
+    function insertQuery()
+    {
+        $userValue = Sqlite3::escapeString($this->uservalue);
+        $query     = "insert or replace into 'StrategyResults' 
+            (strategy, date, symbol, probability_win, expectancy, uservalue )
+            values 
+            ('{$this->strategy}','{$this->date}','{$this->symbol}'
+                ,{$this->probability_win},{$this->expectancy}
+                    ,'{$userValue}') ";
+        return $query;
+    }
+
+}
+
+/**
+ * StrategyResultsController
+ *
+ * PHP version 5
+ * 
+ * @category PHP
+ * @package  
+ * @author   Rob Dawley <>
+ * @license  http://opensource.org/licenses/MIT MIT
+ * @link     http://
+ */
+class StrategyResultsController
+{
+
+    /**
+     * SQLite Database Connection
+     * 
+     * @var connection
+     */
+    private $_db;
+
+    /**
+     * StrategyResultsController constructor
+     */
+    function __construct()
+    {
+        $this->_db = new SQLite3("db/new.sqlite");
         $this->createTable();
     }
-    
+
+    /**
+     * Create the StrategyResults table.
+     * 
+     * @throws ErrorException
+     */
     private function createTable()
-    {        
-        $query  = "create table if not exists 'StrategySearchResults' 
+    {
+        $query = "create table if not exists 'StrategyResults' 
 			( strategy TEXT
 			, date DATE
-			, symbol TEXT)";
-        if ($this->_db->exec($query)) {
-            return $symbol
-        } else {
-            throw new ErrorException("Could not create table.");
+			, symbol TEXT
+            , probability_win FLOAT
+            , expectancy FLOAT
+            , uservalue TEXT
+            , primary key (strategy, date, symbol))";
+        if (!$this->_db->exec($query)) {
+            throw new ErrorException("Could not create StrategyResults table.");
         }
     }
-    
-    function insert($symbol, $data)
+
+    /**
+     * Insert into table.
+     * 
+     * @param StrategyResult $strategyResult
+     */
+    function insert($strategyResult)
     {
-        // get the table name from createTable.
-        $symbol = $this->createTable($symbol)
-
-        // access variable due to space.
-        $adjclose = 'Adj Close';
-
-        // was anything inserted?
-        $updated = false;
-
-        // break the array into 400 row chunks due to a processing limitation 
-        // in sqlite
-        $chunks = array_chunk($data, 400);
-
-        foreach ($chunks as $chunk) {
-            // get the first row for the initial insert statement.
-            $row = array_shift($chunk);
-
-            $query = "insert or replace into '{$symbol}' ";
-            $query .= " select '{$row->Date}' as 'date', ";
-            $query .= " {$row->Open} as 'open', ";
-            $query .= " {$row->High} as 'high', ";
-            $query .= " {$row->Low} as 'low', ";
-            $query .= " {$row->Close} as 'close', ";
-            $query .= " {$row->Volume} as 'volume', ";
-            $query .= " {$row->{$adjclose}} as 'adjclose'\n ";
-
-
-            foreach ($chunk as $row) {
-                $query .= "union select '{$row->Date}',{$row->Open},{$row->High},{$row->Low},{$row->Close},{$row->Volume},{$row->{$adjclose}}\n";
-            }
-
-            $updated = $this->_db->exec($query);
-        }
-
-        // Trigger the last_update timestamp.
-        if ($updated) {
-            $this->setLastUpdate($symbol);
+        if ($strategyResult instanceof StrategyResult) {
+            $this->_db->exec($strategyResult->insertQuery());
+        } else {
+            throw new InvalidArgumentException("Argument must be of type StrategyResult");
         }
     }
+
+    /**
+     * Select from table.
+     * 
+     * @param string $strategy
+     * @param string $date
+     * @param string $symbol
+     * 
+     * @return SQLite3Result
+     */
+    function select($strategy, $date = NULL, $symbol = NULL)
+    {
+        $date   = (is_null($date)) ? '' : "and date = '" . $date . "'";
+        $symbol = (is_null($symbol)) ? '' : " and symbol = '" . $symbol . "'";
+        $query  = "
+            select * 
+            from 'StrategyResults' 
+            where strategy = '{$strategy}'
+            {$date}
+            {$symbol}";
+        return $this->_db->query($query);
+    }
+
 }
 
 /**
@@ -497,8 +657,19 @@ final class YahFin_Field
     const CLOSE          = 4;
     const VOLUME         = 5;
     const ADJUSTED_CLOSE = 6;
-    const _CLOSE         = 6;   // default closing price to use
 
+    /**
+     * default closing price to use
+     */
+    const _CLOSE = 6;
+
+    /**
+     * Get the nice name of the field.
+     * 
+     * @param YahFin_Field $var
+     * 
+     * @return string
+     */
     public static function name($var)
     {
         switch ($var) {
@@ -535,6 +706,13 @@ final class YahFin_Field
 class YahFin_Historical
 {
 
+    /**
+     * Retrieve the historical data from yahoo finanace.
+     * 
+     * @param string $symbol
+     * 
+     * @return array
+     */
     function get($symbol)
     {
         $day                         = date('j');
@@ -569,6 +747,9 @@ class YahFin_Sqlite
      */
     private $_db;
 
+    /**
+     * YahFin_Sqlite constructor
+     */
     function __construct()
     {
         $this->_db = new SQLite3("db/new.sqlite");
@@ -597,7 +778,7 @@ class YahFin_Sqlite
         if ($this->_db->exec($query)) {
             return $symbol;
         } else {
-            throw new ErrorException("Could not create table.");
+            throw new ErrorException("Could not create {$symbol} table.");
         }
     }
 
@@ -655,6 +836,7 @@ class YahFin_Sqlite
      * 
      * @param string $symbol The symbol for the data.
      * @param int $days The number of days back. 0 for all data.
+     * @param array $columns An array of columns to retrieve.
      * 
      * @return SQLite3Result 
      */
@@ -665,6 +847,12 @@ class YahFin_Sqlite
         if ($days != 0) {
             $limit = "LIMIT {$days}";
         }
+
+        $cols = array();
+        foreach ($columns as $column) {
+            $cols[]  = YahFin_Field::name($column);
+        }
+        $columns = implode(',', $cols);
 
         $query = "SELECT {$columns}
             FROM {$symbol}
