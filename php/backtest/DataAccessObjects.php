@@ -414,6 +414,68 @@ class Sqlite_Helper
 
 }
 
+class StrategySearchResults
+{
+    function __construct() {
+        $this->createTable();
+    }
+    
+    private function createTable()
+    {        
+        $query  = "create table if not exists 'StrategySearchResults' 
+			( strategy TEXT
+			, date DATE
+			, symbol TEXT)";
+        if ($this->_db->exec($query)) {
+            return $symbol
+        } else {
+            throw new ErrorException("Could not create table.");
+        }
+    }
+    
+    function insert($symbol, $data)
+    {
+        // get the table name from createTable.
+        $symbol = $this->createTable($symbol)
+
+        // access variable due to space.
+        $adjclose = 'Adj Close';
+
+        // was anything inserted?
+        $updated = false;
+
+        // break the array into 400 row chunks due to a processing limitation 
+        // in sqlite
+        $chunks = array_chunk($data, 400);
+
+        foreach ($chunks as $chunk) {
+            // get the first row for the initial insert statement.
+            $row = array_shift($chunk);
+
+            $query = "insert or replace into '{$symbol}' ";
+            $query .= " select '{$row->Date}' as 'date', ";
+            $query .= " {$row->Open} as 'open', ";
+            $query .= " {$row->High} as 'high', ";
+            $query .= " {$row->Low} as 'low', ";
+            $query .= " {$row->Close} as 'close', ";
+            $query .= " {$row->Volume} as 'volume', ";
+            $query .= " {$row->{$adjclose}} as 'adjclose'\n ";
+
+
+            foreach ($chunk as $row) {
+                $query .= "union select '{$row->Date}',{$row->Open},{$row->High},{$row->Low},{$row->Close},{$row->Volume},{$row->{$adjclose}}\n";
+            }
+
+            $updated = $this->_db->exec($query);
+        }
+
+        // Trigger the last_update timestamp.
+        if ($updated) {
+            $this->setLastUpdate($symbol);
+        }
+    }
+}
+
 /**
  * YahFin_Field
  *
