@@ -611,7 +611,7 @@ class YahooFinance_Options
     public function parseResult( $csvStrInput )
     {
         $results = array();
-        $csvStrs = split("[\n|\r]", $csvStrInput);
+        $csvStrs = preg_split("[\n|\r]", $csvStrInput);
         foreach( $csvStrs as $csvStr ){
             if( !empty( $csvStr ) ) {
                 $csvArray = explode(",", $csvStr );
