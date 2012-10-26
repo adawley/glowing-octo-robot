@@ -1,17 +1,7 @@
 <?php
 include '../YahFinAPI.php';
 
-$api = new YahooFinanceAPI();
-
-$api->addOption("symbol");
-$api->addOption("lastTrade");
-$api->addOption("lastTradeTime");
-
-$objs = array();
-
-$count = strlen($_GET['s']);
-
-class StockParse
+class SymbolParse
 {
     public $count;
     public $current;
@@ -42,7 +32,9 @@ class StockParse
     
 }
 
-$tobj = new StockParse();
+$objs = array();
+$count = strlen($_GET['s']);
+$tobj = new SymbolParse();
 $buf = &$tobj->s();
 
 for ($i = 0; $i < $count; $i++) {
@@ -50,7 +42,7 @@ for ($i = 0; $i < $count; $i++) {
 
     if ($c == ',') {
         $objs[] = $tobj;
-        $tobj = new StockParse();
+        $tobj = new SymbolParse();
         $buf = &$tobj->s();
     } elseif ($c == '*') {
         $buf = &$tobj->m();
@@ -58,48 +50,48 @@ for ($i = 0; $i < $count; $i++) {
         $tobj->add();
         $buf = &$tobj->s();
     } else {
-        $buf .= $c;
+        $buf .= strtoupper($c);
     }
 }
 
 $objs[] = $tobj;
 
-//foreach (preg_split('/,/', $_GET['s']) as $s) {
-//    $tobj         = new stdClass();
-//    $tobj->symbol = $s;
-//    $tobj->count  = 0;
-//    $count        = &$tobj->count;
-//
-//    // see if there is a pair
-//    if (count($pair = preg_split('/-/', $s)) > 0) {
-//        foreach ($pair as $p) {
-//            // see if there are multipliers
-//            if (count($mult = preg_split('/\*/', $s)) > 0) {
-//                foreach ($mult as $m) {
-//                    $tobj->{'s' . $count} = $m;
-//                }
-//            }
-//            $count++;
-//        }
-//    }
-//    $api->addSymbol($s);
-//
-//    $objs[] = $tobj;
-//}
-//$result = $api->getQuotes();
-//$out    = '';
-//if ($result->isSuccess()) {
-//    $quotes = $result->data;
-//    foreach ($quotes as $quote) {
-//        $out .= $quote->symbol . ' ' . $quote->lastTrade . ' ' . $quote->lastTradeTime . '<br>';
-//    }
-//}
+$api = new YahooFinanceAPI();
+$api->addOption("symbol");
+$api->addOption("lastTrade");
+$api->addOption("lastTradeTime");
 
-if (isset($_GET['v'])):
-    //echo $out;
-    echo "<pre>";
-    print_r($objs);
+foreach($objs as $obj){
+    for($i=0; $i<$obj->count;$i++){
+        // add symbol to fin queue
+        $api->addSymbol($obj->{'s'.$i});
+        
+        // set multiplier to 1 if not set.
+        $mult = (float)(strcmp($obj->{'m'.$i},'') == 0 ? '1' : $obj->{'m'.$i});
+        
+        // set object to a negative multiplier if we are on index 1 or greater        
+         $obj->{'m'.$i} = ($i > 0) ? $mult*-1 : $mult;
+    }
+}
 
+$result = $api->getQuotes();
+
+$results = array();
+if ($result->isSuccess()) {
+    foreach($result->data as $row){
+        $results[$row->symbol]['lastTrade'] = (float) $row->lastTrade;
+        $results[$row->symbol]['lastTradeTime'] = (float) $row->lastTradeTime;
+    }
+} else{
+    echo "<br>Api fetch failed.<br>";
+}
+    
+
+//if (isset($_GET['v'])):
+if(true):
+    echo json_encode($objs);
+    echo json_encode($results);
+    echo '<br><br>';
 else:
     ?>
     <!DOCTYPE html>
@@ -121,6 +113,14 @@ else:
             <div id="loadable">
                 <?= $out ?>
             </div>
+            <div id="master_data"> 
+                <table id="master_table">
+                    <tr>
+                        <td class="spy"></td>
+                        <td class="dia"></td>
+                    </tr>
+                </table>
+            </div>                
         </body>
     </html>
 <?php endif; ?>

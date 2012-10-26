@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>none</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+		<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.23/jquery-ui.min.js"></script>
+		<script type="text/javascript">
+			$(document).ready(function(){
+				var sdata = {"SPY":{"lastTrade":141.45,"lastTradeTime":3},"DIA":{"lastTrade":130.8999,"lastTradeTime":3},"USB":{"lastTrade":33.12,"lastTradeTime":3},"WFC":{"lastTrade":33.91,"lastTradeTime":3}};
+				var tdata = [{"count":2,"current":1,"s0":"SPY","m0":2.2,"s1":"DIA","m1":-1},{"count":2,"current":1,"s0":"USB","m0":1,"s1":"WFC","m1":-1}];
+								
+				setTimeout(function(){
+					// make the rows
+					var rows = '';
+					for(var i=0; i<tdata.length; i++){
+						var pairPrice = 0;
+						var ratio = 0;
+						
+						rows += '<tr>';						
+						for(var j=0; j<tdata[i].count; j++){
+							var symb = tdata[i]['s'+j];
+							var mult = tdata[i]['m'+j];
+							var price = sdata[symb].lastTrade;
+							pairPrice += mult*price;
+							ratio = (ratio > 0) ?	ratio/price : price;
+							
+							rows += '<td>'+symb+'</td>';							
+							rows += '<td>'+mult+'</td>';
+							rows += '<td '+symb+'_price>'+price+'</td>';
+						}
+						rows += '<td>'+ratio.toFixed(2)+'</td>';
+						rows += '<td>'+pairPrice.toFixed(2)+'</td>';
+						rows += '</tr>';					
+					}
+				
+					// add them to the table
+					$('#watch_table tbody').append(rows);
+					
+					
+				}, 100);
+			});
+		</script>
+		<style>
+			table{
+				border-collapse: collapse;
+			}
+			td, th{
+				border: 1px solid black;
+				padding: 0 1em 0 1em;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="loadable">
+		</div>
+		<div id="master_data"> 
+			<table id="watch_table">
+				<caption>Watch List</caption>
+				<thead>
+					<tr>
+						<th>Long</th>
+						<th>Mult</th>
+						<th>Last Trade</th>
+						<th>Short</th>
+						<th>Mult</th>
+						<th>Last Trade</th>
+						<th>Pair Ratio</th>
+						<th>Pair Price</th>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+		
+		<table id="trade_table">
+			<caption>Portfolio</caption>
+			<thead>
+				<tr>
+					<th>Opened</th>
+					<th>Closed</th>
+					<th>Side</th>
+					<th>Size(1)</th>
+					<th>Size(2)</th>
+					<th>Symbols</th>
+					<th>Spread entry</th>
+					<th>Spread Exit</th>
+					<th>Entry(1)</th>
+					<th>Entry(2)</th>
+					<th>Exit(1)</th>
+					<th>Exit(2)</th>
+					<th>Spread Points</th>
+					<th>P&L(1)</th>
+					<th>P&L(2)</th>
+					<th>Net P&L</th>
+					<th>comments</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>date</td>
+					<td>date</td>
+					<td>long|short</td>
+					<td>#</td>
+					<td>#</td>
+					<td>s1-s2</td>
+					<td>#</td>
+					<td>#</td>
+					<td>#</td>
+					<td>#</td>
+					<td>#</td>
+					<td>#</td>
+					<td>#</td>
+					<td>#</td>
+					<td>#</td>
+					<td>$#</td>
+					<td>text</td>
+				</tr>
+			</tbody>
+		</table>
+	</body>
+</html>
