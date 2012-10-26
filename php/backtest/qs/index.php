@@ -11,28 +11,58 @@ $objs = array();
 
 $count = strlen($_GET['s']);
 
-$tobj = new stdClass();
-$buf  = '';
+class StockParse
+{
+    public $count;
+    public $current;
+    
+    function __construct() {
+        $this->count = 0;
+        $this->current = 0;
+        $this->add();
+    }
+    
+    function add()
+    {
+        $this->{'s'.$this->count} = '';
+        $this->{'m'.$this->count} = '';
+        $this->current = $this->count;
+        $this->count++;
+    }
+    
+    function &s()
+    {
+        return $this->{'s'.$this->current};
+    }
+    
+    function &m()
+    {
+        return $this->{'m'.$this->current};
+    }
+    
+}
+
+$tobj = new StockParse();
+$buf = &$tobj->s();
 
 for ($i = 0; $i < $count; $i++) {
     $c = $_GET['s'][$i];
 
     if ($c == ',') {
-        $tobj->symbol = $buf;
-        $buf = '';
-        $objs[]       = $tobj;
-        $tobj = new stdClass();
-    } elseif($c == '*') {
-        $tobj->symbol = $buf;
-        $buf = '';
-    } elseif($c == '-'){
-        
-    }else {
+        $objs[] = $tobj;
+        $tobj = new StockParse();
+        $buf = &$tobj->s();
+    } elseif ($c == '*') {
+        $buf = &$tobj->m();
+    } elseif ($c == '-') {
+        $tobj->add();
+        $buf = &$tobj->s();
+    } else {
         $buf .= $c;
     }
 }
-$tobj->symbol = $buf;
-$objs[]       = $tobj;
+
+$objs[] = $tobj;
 
 //foreach (preg_split('/,/', $_GET['s']) as $s) {
 //    $tobj         = new stdClass();
