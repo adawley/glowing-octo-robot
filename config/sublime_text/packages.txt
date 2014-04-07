@@ -1,0 +1,18 @@
+alignment
+angularjs
+docblockr
+git
+gitgutter
+HTMLBeautify
+INI
+Jade
+javascriptBeautify
+Javascript & NodeJS Snippets
+js-conl
+PackageControl
+PowerShell
+SublimeLinter
+SublimeLinter-jshint
+SublimeREPL
+Trailing spaces
+
