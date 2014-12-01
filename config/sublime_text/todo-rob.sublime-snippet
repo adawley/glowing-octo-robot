@@ -1,0 +1,4 @@
+<snippet>
+	<content><![CDATA[// TODO(rob): ${1}]]></content>
+	<tabTrigger>//t</tabTrigger>
+</snippet>
