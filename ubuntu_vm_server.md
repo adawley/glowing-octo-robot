@@ -4,6 +4,7 @@ Ubuntu Server VM Config
 Preamble
 --------
 
+    mkdir ~/opt && mkdir ~/bin
     sudo apt-get install -y xinit
     sudo apt-get install -y build-essential
     sudo mount /dev/cdrom /mnt
@@ -21,9 +22,18 @@ Dev Env
 Configure X
 -----------
 
-    sudo apt-get install chromium-browser
-    sudo apt-get install xfonts-terminus
+chrome:
 
+    sudo apt-get install chromium-browser
+
+edit `~/bin/web`
+
+    chromium-browser $@ 2>/dev/null &
+
+xterm:
+
+    sudo apt-get install xfonts-terminus
+    
 edit `~/.xinitrc`:
 
     exec xterm
@@ -61,12 +71,14 @@ edit `~/.Xdefaults`:
     xterm*colorBD: rgb:fc/fc/fc
 
 blackbox:
+    
+    sudo apt-get install blackbox
 
-    mkdir -p ~/.blackbox/styles && cp /usr/share/blackbox/styles/Blue ~/.blackbox/styles/Black
+styles located in `usr/share/blackbox/styles` they are not needed to just change the background color.
 
 edit `~/.blackboxrc`:
     
-    session.styleFile: ~/.blackbox/styles/Black
+    rootCommand: bsetroot -solid rgb:10/20/30
 
 sublime text 
 ------------
@@ -74,7 +86,11 @@ sublime text
 
     sudo apt-get install libgtk2.0-common
     wget http://c758482.r82.cf2.rackcdn.com/sublime_text_3_build_3065_x64.tar.bz2
-    mkdir ~/opt
     mv sublime_text_3_build_3065_x64.tar.bz2 ~/opt
     tar xvfj sublime_text_3_build_3065_x64.tar.bz2
     rm sublime_text_3_build_3065_x64.tar.bz2
+
+edit `~/bin/e`:
+
+    ~/opt/sublime_text_3/sublime_text $@
+    
