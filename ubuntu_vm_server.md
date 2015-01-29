@@ -22,7 +22,7 @@ Dev Env
 Configure X
 -----------
 
-chrome:
+**chrome**:
 
     sudo apt-get install chromium-browser
 
@@ -30,7 +30,7 @@ edit `~/bin/web`
 
     chromium-browser $@ 2>/dev/null &
 
-xterm:
+**xterm**:
 
     sudo apt-get install xfonts-terminus
     
@@ -70,15 +70,32 @@ edit `~/.Xdefaults`:
     xterm*colorBDMode: true
     xterm*colorBD: rgb:fc/fc/fc
 
-blackbox:
+**blackbox**:
     
-    sudo apt-get install blackbox
+    sudo apt-get install blackbox wmctrl xbindkeys
 
 styles located in `usr/share/blackbox/styles` they are not needed to just change the background color.
 
 edit `~/.blackboxrc`:
     
     rootCommand: bsetroot -solid rgb:10/20/30
+
+edit `~/bin/run-or-raise`:
+    
+    #!/bin/bash
+    wmctrl -x -a "$1" || $2
+    
+edit `~/.xbindkeysrc`:
+
+    "~/bin/run-or-raise 'chromium-browser.Chromium-browser' chromium-browser"
+        Mod4 + 1
+
+    "~/scripts/bin/run-or-raise 'sublime_text.sublime-text-2' subl"
+        Mod4 + 2
+    
+    "~/scripts/bin/run-or-raise 'terminator.Terminator' terminator"
+        Mod4 + 3
+
 
 sublime text 
 ------------
