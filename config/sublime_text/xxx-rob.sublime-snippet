@@ -1,4 +1,4 @@
 <snippet>
 	<content><![CDATA[// XXX(rob): ${1}]]></content>
-	<tabTrigger>//t</tabTrigger>
+	<tabTrigger>//x</tabTrigger>
 </snippet>
