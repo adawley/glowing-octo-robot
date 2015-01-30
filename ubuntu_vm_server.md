@@ -6,7 +6,7 @@ Preamble
 
     mkdir ~/opt && mkdir ~/bin
     sudo apt-get install -y xinit
-    sudo apt-get install -y build-essential
+    sudo apt-get install -y build-essential dkms
     sudo mount /dev/cdrom /mnt
     sudo /mnt/VBoxLinuxAdditions.run
     sudo reboot
@@ -36,6 +36,8 @@ edit `~/bin/web`
     
 edit `~/.xinitrc`:
 
+    exec fluxbox &
+    exec VBoxClient --clipboard &
     exec xterm
 
 edit `~/.Xdefaults`:
@@ -70,31 +72,11 @@ edit `~/.Xdefaults`:
     xterm*colorBDMode: true
     xterm*colorBD: rgb:fc/fc/fc
 
-**blackbox**:
+**fluxbox**:
     
-    sudo apt-get install blackbox wmctrl xbindkeys
+    sudo apt-get install fluxbox
 
-styles located in `usr/share/blackbox/styles` they are not needed to just change the background color.
-
-edit `~/.blackboxrc`:
-    
-    rootCommand: bsetroot -solid rgb:10/20/30
-
-edit `~/bin/run-or-raise`:
-    
-    #!/bin/bash
-    wmctrl -x -a "$1" || $2
-    
-edit `~/.xbindkeysrc`:
-
-    "~/bin/run-or-raise 'chromium-browser.Chromium-browser' chromium-browser"
-        Mod4 + 1
-
-    "~/scripts/bin/run-or-raise 'sublime_text.sublime-text-2' subl"
-        Mod4 + 2
-    
-    "~/scripts/bin/run-or-raise 'terminator.Terminator' terminator"
-        Mod4 + 3
+set style to zimek_darkblue
 
 
 sublime text 
