@@ -11,6 +11,21 @@ Preamble
     sudo /mnt/VBoxLinuxAdditions.run
     sudo reboot
     
+Configure Shell
+---------------
+
+[glowing-octo-robot/config/bashrc]
+
+    # fancy prompt
+    # 31m = red; 32m = green; 34 = blue; 36m = cyan
+    PS1='\[\033[32m\]'             # change color
+    PS1="$PS1"'\u@\h '             # user@host<space>
+    PS1="$PS1"'\[\033[33m\]'       # change color
+    PS1="$PS1"'\w'                 # current working directory
+    PS1="$PS1"'\[\033[0m\]'        # change color
+    PS1="$PS1"'\n'                 # new line
+    PS1="$PS1"'$ '                 # prompt: always $
+
 
 Dev Env
 -------
