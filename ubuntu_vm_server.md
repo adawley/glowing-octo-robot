@@ -3,7 +3,10 @@ Ubuntu Server VM Config
 
 Table of Contents
 -----------------
-[Preamble](https://github.com/adawley/glowing-octo-robot/edit/master/ubuntu_vm_server.md#Preamble)
+[Preamble](https://github.com/adawley/glowing-octo-robot/blob/master/ubuntu_vm_server.md#preamble)
+[Configure Shell](https://github.com/adawley/glowing-octo-robot/blob/master/ubuntu_vm_server.md#configure-shell)
+[Dev Env](https://github.com/adawley/glowing-octo-robot/blob/master/ubuntu_vm_server.md#dev-env)
+[Sublime Text](https://github.com/adawley/glowing-octo-robot/blob/master/ubuntu_vm_server.md#sublime-text)
 
 
 
