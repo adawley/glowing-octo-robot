@@ -1,6 +1,12 @@
 Ubuntu Server VM Config
 =======================
 
+Table of Contents
+-----------------
+[Preamble](https://github.com/adawley/glowing-octo-robot/edit/master/ubuntu_vm_server.md#Preamble)
+
+
+
 Preamble
 --------
 
